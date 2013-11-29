@@ -1,0 +1,490 @@
+Index: libclasp/clasp/clause.h
+===================================================================
+--- libclasp/clasp/clause.h	(revision 7436)
++++ libclasp/clasp/clause.h	(working copy)
+@@ -67,7 +67,7 @@
+ 	SharedLiterals(const Literal* lits, uint32 size, ConstraintType t, uint32 numRefs);
+ 	SharedLiterals(const SharedLiterals&);
+ 	SharedLiterals& operator=(const SharedLiterals&);
+-	std::atomic<int32> refCount_;
++	Clasp::atomic<int32> refCount_;
+ 	uint32             size_type_;
+ 	Literal            lits_[0];
+ };
+Index: libclasp/clasp/enumerator.h
+===================================================================
+--- libclasp/clasp/enumerator.h	(revision 7436)
++++ libclasp/clasp/enumerator.h	(working copy)
+@@ -211,12 +211,12 @@
+ private:
+ 	Enumerator(const Enumerator&);
+ 	Enumerator& operator=(const Enumerator&);
+-	uint64              numModels_;
+-	Report*             report_;
+-	SharedMinimizeData* mini_;
+-	std::atomic<uint32> updates_;
+-	uint32              activeLevel_;
+-	bool                restartOnModel_;
++	uint64                numModels_;
++	Report*               report_;
++	SharedMinimizeData*   mini_;
++	Clasp::atomic<uint32> updates_;
++	uint32                activeLevel_;
++	bool                  restartOnModel_;
+ };
+ 
+ class NullEnumerator : public Enumerator {
+Index: libclasp/clasp/minimize_constraint.h
+===================================================================
+--- libclasp/clasp/minimize_constraint.h	(revision 7436)
++++ libclasp/clasp/minimize_constraint.h	(working copy)
+@@ -71,7 +71,7 @@
+ 	//! A type for holding an optimum and the information for how to proceed.
+ 	struct Optimum {
+ 		typedef std::pair<uint32, wsum_t> Step;
+-		typedef std::atomic<uint32>       Atomic;
++		typedef Clasp::atomic<uint32>     Atomic;
+ 		Atomic seq;     /**< sequence number associated with this optimum */
+ 		SumVec opt;     /**< current optimum / one value per level      */
+ 		Step   step;    /**< (opt - step) gives the next bound to check */
+@@ -133,7 +133,7 @@
+ 	bool optimizeNext() { return optimizeNext(opt_); }
+ 	//@}
+ private:
+-	typedef std::atomic<Optimum*> OptPtr;
++	typedef Clasp::atomic<Optimum*> OptPtr;
+ 	SumVec       sum_;     // initial lhs sum
+ 	Optimum      opts_[2]; // buffers for update via "double buffering"
+ 	OptPtr       opt_;     // active optimum
+Index: libclasp/clasp/parallel_solve.h
+===================================================================
+--- libclasp/clasp/parallel_solve.h	(revision 7436)
++++ libclasp/clasp/parallel_solve.h	(working copy)
+@@ -69,7 +69,7 @@
+ 	 */
+ 	void createSolveObject(SolveAlgorithm*& out, SharedContext& ctx, SolverConfig** sc) const;
+ 	//! Returns the number of threads that can run concurrently on the current hardware.
+-	static uint32   recommendedSolvers() { return std::thread::hardware_concurrency(); }
++	static uint32   recommendedSolvers() { return Clasp::thread::hardware_concurrency(); }
+ 	//! Returns number of maximal number of supported threads.
+ 	static uint32   supportedSolvers()   { return 64; }
+ };
+@@ -179,7 +179,7 @@
+ 	int  error() const   { return (int)error_; }
+ 	void setWinner()     { win_ = 1; }
+ 	bool winner() const  { return win_ != 0; }
+-	void setThread(std::thread& x) { assert(!joinable()); x.swap(thread_); assert(joinable()); }
++	void setThread(Clasp::thread& x) { assert(!joinable()); x.swap(thread_); assert(joinable()); }
+ 	
+ 	//! True if *this has an associated thread of execution, false otherwise.
+ 	bool joinable() const { return thread_.joinable(); }
+@@ -255,7 +255,7 @@
+ 	ParallelSolve* ctrl() const { return messageHandler_.ctrl; }
+ 	typedef LitVec::size_type size_type;
+ 	typedef PodVector<Constraint*>::type ClauseDB;
+-	std::thread        thread_;     // active thread or empty for master
++	Clasp::thread      thread_;     // active thread or empty for master
+ 	ClauseDB           integrated_; // my integrated clauses
+ 	Solver*            solver_;     // my solver
+ 	const SolveParams* params_;     // my solving params
+Index: libclasp/clasp/shared_context.h
+===================================================================
+--- libclasp/clasp/shared_context.h	(revision 7436)
++++ libclasp/clasp/shared_context.h	(working copy)
+@@ -221,8 +221,8 @@
+ 	struct ReverseArc;
+ #if WITH_THREADS
+ 	struct Block {
+-		typedef std::atomic<uint32> atomic_size;
+-		typedef std::atomic<Block*> atomic_ptr;
++		typedef Clasp::atomic<uint32> atomic_size;
++		typedef Clasp::atomic<Block*> atomic_ptr;
+ 		typedef const Literal*      const_iterator;
+ 		typedef       Literal*      iterator;
+ 		enum { block_cap = (64 - (sizeof(atomic_size)+sizeof(atomic_ptr)))/sizeof(Literal) };
+Index: libclasp/clasp/util/atomic.h
+===================================================================
+--- libclasp/clasp/util/atomic.h	(revision 7436)
++++ libclasp/clasp/util/atomic.h	(working copy)
+@@ -26,9 +26,9 @@
+ 
+ #if WITH_THREADS
+ #include <tbb/atomic.h>
+-namespace std { using tbb::atomic; }
++namespace Clasp { using tbb::atomic; }
+ #else
+-namespace Clasp { namespace Serial {
++namespace no_multi_threading {
+ template <class T>
+ struct atomic {
+ 	typedef T value_type;
+@@ -40,6 +40,11 @@
+ 	value_type operator++()             { return ++value;    }
+ 	value_type operator--()             { return --value;    }
+ 	value_type operator->() const       { return value;    }
++	value_type fetch_and_store(value_type v) {
++		value_type last= value;
++		value          = v;
++		return last;
++	}
+ 	value_type compare_and_swap(value_type y, value_type z) {
+ 		if (value == z) {
+ 			value = y;
+@@ -49,13 +54,14 @@
+ 	}
+ 	T value;
+ };
+-}}
+-namespace std { using Clasp::Serial::atomic; }
++}
++namespace Clasp { using no_multi_threading::atomic; }
+ #endif
+ 
++
+ // effect: T temp; a |= mask; return temp
+ template <class T>
+-inline T fetch_and_or(std::atomic<T>& a, T mask) {
++inline T fetch_and_or(Clasp::atomic<T>& a, T mask) {
+ 	T x;
+ 	do {
+ 		x = a;
+@@ -65,7 +71,7 @@
+ 
+ // effect: T temp; a &= mask; return temp
+ template <class T>
+-inline T fetch_and_and(std::atomic<T>& a, T mask) {
++inline T fetch_and_and(Clasp::atomic<T>& a, T mask) {
+ 	T x;
+ 	do {
+ 		x = a;
+Index: libclasp/clasp/util/multi_queue.h
+===================================================================
+--- libclasp/clasp/util/multi_queue.h	(revision 7436)
++++ libclasp/clasp/util/multi_queue.h	(working copy)
+@@ -25,8 +25,8 @@
+ 
+ namespace Clasp { namespace mt { namespace Detail {
+ struct NodeBase {
+-	typedef std::atomic<NodeBase*> AtomicPtr;
+-	typedef std::atomic<int>       AtomicInt;
++	typedef Clasp::atomic<NodeBase*> AtomicPtr;
++	typedef Clasp::atomic<int>       AtomicInt;
+ 	explicit NodeBase(uint32 rc) { next = 0; refs = rc; }
+ 	AtomicPtr next;
+ 	AtomicInt refs;
+Index: libclasp/clasp/util/mutex.h
+===================================================================
+--- libclasp/clasp/util/mutex.h	(revision 7436)
++++ libclasp/clasp/util/mutex.h	(working copy)
+@@ -26,13 +26,30 @@
+ #define WIN32_LEAN_AND_MEAN // exclude APIs such as Cryptography, DDE, RPC, Shell, and Windows Sockets.
+ #define NOMINMAX            // do not let windows.h define macros min and max
+ #endif
+-#include <tbb/compat/condition_variable>
++
+ #include <tbb/mutex.h>
+ #include <tbb/spin_mutex.h>
+-namespace std { using tbb::mutex; }
++#if defined(TBB_IMPLEMENT_CPP0X)
++#define RESTORE_TBB_IMPLEMENT_CPP0X TBB_IMPLEMENT_CPP0X
++#undef TBB_IMPLEMENT_CPP0X
++#endif
++#define TBB_IMPLEMENT_CPP0X 0
++#include <tbb/compat/condition_variable>
++#undef TBB_IMPLEMENT_CPP0X
++#if defined(RESTORE_TBB_IMPLEMENT_CPP0X)
++#define TBB_IMPLEMENT_CPP0X RESTORE_TBB_IMPLEMENT_CPP0X
++#undef RESTORE_TBB_IMPLEMENT_CPP0X
++#endif
++namespace Clasp { 
++	using tbb::mutex; 
++	using tbb::spin_mutex;
++	using tbb::interface5::condition_variable;
++	using tbb::interface5::lock_guard;
++	using tbb::interface5::unique_lock;
++	using tbb::interface5::swap;
++}
+ #else
+-namespace Clasp { namespace Serial {
+-
++namespace no_multi_threading {
+ class NullMutex {   
+ public:   
+ 	NullMutex()     {}
+@@ -56,10 +73,12 @@
+ 	lock_guard& operator=(const lock_guard&);
+ 	mutex_type& pm;
+ };
+-}}
+-namespace std { using Clasp::Serial::mutex; using Clasp::Serial::lock_guard; }
+-namespace tbb { using Clasp::Serial::spin_mutex; }
+-
++}
++namespace Clasp {
++	using no_multi_threading::mutex;
++	using no_multi_threading::lock_guard;
++	using no_multi_threading::spin_mutex;
++}
+ #endif
+ 
+ #endif
+Index: libclasp/clasp/util/platform.h
+===================================================================
+--- libclasp/clasp/util/platform.h	(revision 7436)
++++ libclasp/clasp/util/platform.h	(working copy)
+@@ -107,7 +107,7 @@
+ template <bool> struct static_assertion;
+ template <>     struct static_assertion<true> {};
+ 
+-#if !defined(__cplusplus) || __cplusplus < 201103L
++#if !defined(static_assert) && (!defined(__cplusplus) || __cplusplus < 201103L)
+ #define static_assert(x, message) (void)sizeof(static_assertion< (x) >)
+ #endif
+ 
+Index: libclasp/clasp/util/thread.h
+===================================================================
+--- libclasp/clasp/util/thread.h	(revision 7436)
++++ libclasp/clasp/util/thread.h	(working copy)
+@@ -26,16 +26,22 @@
+ #define WIN32_LEAN_AND_MEAN // exclude APIs such as Cryptography, DDE, RPC, Shell, and Windows Sockets.
+ #define NOMINMAX            // do not let windows.h define macros min and max
+ #endif
+-#include <tbb/compat/thread> // replace with std::thread once available
++#include <tbb/tbb_thread.h>
++namespace Clasp {
++	typedef tbb::tbb_thread thread;
++	namespace this_thread {
++		using tbb::this_tbb_thread::yield;
++	}
++}
+ #else
+-namespace Clasp { namespace Serial {
++namespace no_multi_threading {
+ 	struct thread {};
+ 	inline void yield() {}
+-}}
+-namespace std { 
+-	using Clasp::Serial::thread;
+-	namespace this_thread { using Clasp::Serial::yield; }
+ }
++namespace Clasp { 
++	typedef no_multi_threading::thread thread;
++	namespace this_thread { using no_multi_threading::yield; }
++}
+ #endif
+ 
+ #endif
+Index: libclasp/src/cb_enumerator.cpp
+===================================================================
+--- libclasp/src/cb_enumerator.cpp	(revision 7436)
++++ libclasp/src/cb_enumerator.cpp	(working copy)
+@@ -47,7 +47,7 @@
+ 		return ret.local;
+ 	}
+ 	SharedLiterals* getShared() { 
+-		std::lock_guard<tbb::spin_mutex> lock(mutex_);
++		Clasp::lock_guard<Clasp::spin_mutex> lock(mutex_);
+ 		return current_ ? current_->share() : 0;
+ 	}
+ 	bool shared() const { return shared_; }
+@@ -55,15 +55,15 @@
+ 	SharedLiterals* createShared(const LitVec& c) {
+ 		SharedLiterals* newShared = SharedLiterals::newShareable(c, Constraint_t::learnt_other, 2);
+ 		SharedLiterals* oldShared = current_;
+-		{ std::lock_guard<tbb::spin_mutex> lock(mutex_);
++		{ Clasp::lock_guard<Clasp::spin_mutex> lock(mutex_);
+ 			current_ = newShared;
+ 		}
+ 		if (oldShared) oldShared->release();
+ 		return newShared;
+ 	}
+-	tbb::spin_mutex mutex_;
+-	SharedLiterals* current_;
+-	bool            shared_;
++	Clasp::spin_mutex mutex_;
++	SharedLiterals*   current_;
++	bool              shared_;
+ };
+ /////////////////////////////////////////////////////////////////////////////////////////
+ // CBConsequences::LocalConstraint
+Index: libclasp/src/parallel_solve.cpp
+===================================================================
+--- libclasp/src/parallel_solve.cpp	(revision 7436)
++++ libclasp/src/parallel_solve.cpp	(working copy)
+@@ -44,11 +44,11 @@
+ 		active_  = maxParties;
+ 	}
+ 	// Returns the current semaphore counter.
+-	int  counter()   { std::lock_guard<std::mutex> lock(semMutex_); return counter_; }
++	int  counter()   { Clasp::lock_guard<Clasp::mutex> lock(semMutex_); return counter_; }
+ 	// Returns the number of parties required to trip this barrier.
+-	int  parties()   { std::lock_guard<std::mutex> lock(semMutex_); return active_;  } 
++	int  parties()   { Clasp::lock_guard<Clasp::mutex> lock(semMutex_); return active_;  } 
+ 	// Returns true if all parties are waiting at the barrier
+-	bool active()    { std::lock_guard<std::mutex> lock(semMutex_); return unsafe_active(); }
++	bool active()    { Clasp::lock_guard<Clasp::mutex> lock(semMutex_); return unsafe_active(); }
+ 	
+ 	// barrier interface
+ 	
+@@ -55,7 +55,7 @@
+ 	// Increases the barrier count, i.e. the number of 
+ 	// parties required to trip this barrier.
+ 	void addParty() {
+-		std::lock_guard<std::mutex> lock(semMutex_);
++		Clasp::lock_guard<Clasp::mutex> lock(semMutex_);
+ 		++active_;
+ 	}
+ 	// Decreases the barrier count and resets the barrier
+@@ -62,7 +62,7 @@
+ 	// if reset is true. 
+ 	// PRE: the thread does not itself wait on the barrier
+ 	void removeParty(bool reset) {
+-		std::unique_lock<std::mutex> lock(semMutex_);
++		Clasp::unique_lock<Clasp::mutex> lock(semMutex_);
+ 		assert(active_ > 0);
+ 		--active_;
+ 		if      (reset)           { unsafe_reset(0); }
+@@ -74,13 +74,13 @@
+ 	// Applications shall use this value to designate one thread as the
+ 	// leader that will eventually reset the barrier thereby unblocking the other threads.
+ 	bool wait() {
+-		std::unique_lock<std::mutex> lock(semMutex_);
++		Clasp::unique_lock<Clasp::mutex> lock(semMutex_);
+ 		if (--counter_ >= 0) { counter_ = -1; }
+ 		return unsafe_wait(lock);
+ 	}
+ 	// Resets the barrier and unblocks any waiting threads.
+ 	void reset(uint32 semCount = 0) {
+-		std::lock_guard<std::mutex> lock(semMutex_);
++		Clasp::lock_guard<Clasp::mutex> lock(semMutex_);
+ 		unsafe_reset(semCount);
+ 	}
+ 	// semaphore interface
+@@ -91,7 +91,7 @@
+ 	// Returns false to signal that all but the calling thread
+ 	// are currently blocked.
+ 	bool down() {
+-		std::unique_lock<std::mutex> lock(semMutex_);
++		Clasp::unique_lock<Clasp::mutex> lock(semMutex_);
+ 		if (--counter_ >= 0) { return true; }
+ 		return !unsafe_wait(lock);
+ 	}
+@@ -101,7 +101,7 @@
+ 	void up() {
+ 		bool notify;
+ 		{
+-			std::lock_guard<std::mutex> lock(semMutex_);
++			Clasp::lock_guard<Clasp::mutex> lock(semMutex_);
+ 			notify    = (++counter_ < 1);
+ 		}
+ 		if (notify) semCond_.notify_one();
+@@ -109,7 +109,7 @@
+ private:
+ 	BarrierSemaphore(const BarrierSemaphore&);
+ 	BarrierSemaphore& operator=(const BarrierSemaphore&);
+-	typedef std::condition_variable cv;
++	typedef Clasp::condition_variable cv;
+ 	bool    unsafe_active() const { return -counter_ >= active_; }
+ 	void    unsafe_reset(uint32 semCount) {
+ 		int prev = counter_;
+@@ -117,7 +117,7 @@
+ 		if (prev < 0) { semCond_.notify_all(); }
+ 	}
+ 	// Returns true for the leader, else false
+-	bool    unsafe_wait(std::unique_lock<std::mutex>& lock) {
++	bool    unsafe_wait(Clasp::unique_lock<Clasp::mutex>& lock) {
+ 		assert(counter_ < 0);
+ 		// don't put the last thread to sleep!
+ 		if (!unsafe_active()) {
+@@ -125,10 +125,10 @@
+ 		}
+ 		return unsafe_active();
+ 	}	
+-	cv         semCond_;  // waiting threads
+-	std::mutex semMutex_; // mutex for updating counter
+-	int        counter_;  // semaphore's counter
+-	int        active_;   // number of active threads
++	cv           semCond_;  // waiting threads
++	Clasp::mutex semMutex_; // mutex for updating counter
++	int          counter_;  // semaphore's counter
++	int          active_;   // number of active threads
+ };
+ /////////////////////////////////////////////////////////////////////////////////////////
+ // ParallelSolve::Impl
+@@ -188,18 +188,18 @@
+ 	bool        allowRestart()       const { return !hasControl(forbid_restart_flag); }
+ 	bool        setControl(uint32 flags)   { return (fetch_and_or(control, flags) & flags) != flags; }
+ 	bool        clearControl(uint32 flags) { return (fetch_and_and(control, ~flags) & flags) == flags; }
+-	ScheduleStrategy    globalR;     // global restart strategy
+-	uint64              maxConflict; // current restart limit
+-	SharedContext*      ctx;         // shared context object
+-	const LitVec*       path;        // initial guiding path - typically empty
+-	Timer<RealTime>     syncT;       // thread sync time
+-	std::mutex          modelM;      // model-mutex 
+-	BarrierSemaphore    workSem;     // work-semaphore
+-	queue               workQ;       // work-queue
+-	uint32              nextId;      // next solver id to use
+-	std::atomic<int>    workReq;     // > 0: someone needs work
+-	std::atomic<uint32> restartReq;  // == numThreads(): restart
+-	std::atomic<uint32> control;     // set of active message flags
++	ScheduleStrategy      globalR;     // global restart strategy
++	uint64                maxConflict; // current restart limit
++	SharedContext*        ctx;         // shared context object
++	const LitVec*         path;        // initial guiding path - typically empty
++	Timer<RealTime>       syncT;       // thread sync time
++	Clasp::mutex          modelM;      // model-mutex 
++	BarrierSemaphore      workSem;     // work-semaphore
++	queue                 workQ;       // work-queue
++	uint32                nextId;      // next solver id to use
++	Clasp::atomic<int>    workReq;     // > 0: someone needs work
++	Clasp::atomic<uint32> restartReq;  // == numThreads(): restart
++	Clasp::atomic<uint32> control;     // set of active message flags
+ };
+ 
+ // post message to all threads
+@@ -287,7 +287,7 @@
+ 		s.stats.enableStats(shared_->ctx->master()->stats);
+ 		allocThread(id, s, p);
+ 		// start in new thread
+-		std::thread x(std::mem_fun(&ParallelSolve::solveParallel), this, id);
++		Clasp::thread x(std::mem_fun(&ParallelSolve::solveParallel), this, id);
+ 		thread_[id]->setThread(x);
+ 	}
+ }
+@@ -571,7 +571,7 @@
+ 		// grab lock - models must be processed sequentially
+ 		// in order to simplify printing and to avoid duplicates
+ 		// in all non-trivial enumeration modes
+-		std::lock_guard<std::mutex> lock(shared_->modelM);
++		Clasp::lock_guard<Clasp::mutex> lock(shared_->modelM);
+ 		// first check if the model is still valid once all
+ 		// information is integrated into the solver
+ 		if (shared_->terminate() || !thread_[s.id()]->isModel(s)) {
+Index: libclasp/src/shared_context.cpp
+===================================================================
+--- libclasp/src/shared_context.cpp	(revision 7436)
++++ libclasp/src/shared_context.cpp	(working copy)
+@@ -87,7 +87,7 @@
+ 				return;
+ 			}
+ 			else { 
+-				std::this_thread::yield();
++				Clasp::this_thread::yield();
+ 			}
+ 		}
+ 		else {
+Index: libclasp/src/weight_constraint.cpp
+===================================================================
+--- libclasp/src/weight_constraint.cpp	(revision 7436)
++++ libclasp/src/weight_constraint.cpp	(working copy)
+@@ -30,8 +30,8 @@
+ 	SharedWeightLits(uint32 size, bool hasWeight) : shared_lits(size, true, hasWeight) {
+ 		shared_counter = 1; 
+ 	}
+-	std::atomic<int> shared_counter;
+-	WeightLits       shared_lits;
++	Clasp::atomic<int> shared_counter;
++	WeightLits         shared_lits;
+ };
+ 
+ SharedWeightLits* toSharedLits(WeightLits* x) {
