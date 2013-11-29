@@ -30,3 +30,16 @@ target_link_libraries(clasp_app
   ${TBB_LIBRARIES}
 )
 set_target_properties(clasp_app PROPERTIES OUTPUT_NAME clasp)
+
+## install targets
+install(TARGETS clasp program_opts clasp_app
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+## install headers
+foreach(lib clasp program_opts)
+  install(DIRECTORY lib${lib}/${lib}/
+    DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}/${lib}
+  )
+endforeach(lib)
