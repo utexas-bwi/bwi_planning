@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>planner_krr14</name>
+  <name>bwi_planning</name>
   <version>0.0.0</version>
   <description>The planner_krr14 package</description>
 

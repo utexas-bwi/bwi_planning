@@ -12,7 +12,6 @@ import rospy
 
 # Brings in the SimpleActionClient
 
-
 domainFile = sys.argv[1]
 queryFile = sys.argv[3]
 initialFile = sys.argv[2]
@@ -134,9 +133,10 @@ class Atom(object):
         return self.name + "(" + str(self.value) + "," + str(self.time) + ")"
 
     def __eq__(self, other):
-        return self.name == other.name and\
-                self.type == other.type and\
-                self.value == other.value
+        return self.name == other.name and \
+                self.type == other.type and \
+                self.value == other.value and \
+                self.negated == other.negated
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -185,7 +185,7 @@ class ClingoWrapper(object):
         self.clingo_threads = rospy.get_param("clingo_threads", 6)
         self.domain_file = rospy.get_param("domain_file", "nav")
 
-    def get_plan(self, additional_files, actions):
+    def get_plan(self, additional_files):
 
         # Run clingo
         additional_files_str = " ".join(additional_files)
@@ -222,152 +222,148 @@ class ClingoWrapper(object):
         out_file.close()
         return True, optimization, plan, states
 
-def PlannerClient():
-    client = actionlib.SimpleActionClient('clingo_interface_gui', clingo_interface_gui.msg.ClingoInterfaceAction)
-    client.wait_for_server()
+class PlannerClient(object):
 
-#initial state sensing:
+    def __init__(self):
+        self.client = actionlib.SimpleActionClient('clingo_interface_gui', 
+                clingo_interface_gui.msg.ClingoInterfaceAction)
+        self.client.wait_for_server()
+        self.clingo_interface = ClingoWrapper()
+        self.initial_file = rospy.get_param("~initial_file")
+        self.query_file = rospy.get_param("~query_file")
+        self.domain_cost_file = rospy.get_param("~domain_cost_file", None)
+        self.costs_file = rospy.get_param("~costs_file", None)
+        self.enable_learning = rospy.get_param("~enable_learning", False)
 
-    command = clingo_interface_gui.msg.ClingoFluent("noop", [])
-    sensedfluent =  clingo_interface_gui.msg.ClingoFluent()
-    evalfluent = []
-    
-    goal = clingo_interface_gui.msg.ClingoInterfaceGoal(command, sensedfluent, evalfluent)
-    client.send_goal(goal)
-    client.wait_for_result()
-    result = client.get_result()
-    
-    inputFile = open(sys.argv[2],"w")
-    for fluent in result.observable_fluents:
-        op = fluent.op
-        arg = fluent.args
-        curstate = (str(0),[op]+arg)
-        s="("
-        for i in range(1,len(curstate[1])):
-            s = s + curstate[1][i]+","
-            s = s+"0).\n"
-            newinit = curstate[1][0]+s
-        inputFile.write(newinit)
-        print "Initial sensing:"+ newinit
-    inputFile.close()
-
-    result = GeneratePlan()
-    SendoutPlan(result,client)
-
-#task finished, send out "finish" action
-    finish = clingo_interface_gui.msg.ClingoFluent("finish",[])
-    fsensedfluent =  clingo_interface_gui.msg.ClingoFluent()
-    fevalfluent = []
-    
-    goalfinished = clingo_interface_gui.msg.ClingoInterfaceGoal(finish,fsensedfluent, fevalfluent)
-    client.send_goal(goalfinished)
-    print "Finish goal"
-    client.wait_for_result()
-
-def SendoutPlan(result,client):
-    plan = result[0]
-    state = result[1]
-
-    command = clingo_interface_gui.msg.ClingoFluent()
-    sense_fluent = clingo_interface_gui.msg.ClingoFluent()
-#    evaluate_fluent = clingo_interface_gui.msg.ClingoFluent()
-    evaluate_fluent =[]
-    for i in range(len(plan)):
-        s = plan[i]
-        if s[1][0] == "sense":
-            command.op = "sense"
-            w = s[1][1] # the fluent to be sensed
-            sense_fluent.op = w[:w.find("(")]
-            if w.find("(")!=-1:
-                a2 = w[w.find("(")+1:w.rfind(")")] # list of arguments of sense
-                sense_fluent.args = a2.split(",")
-        else:
-            command = clingo_interface_gui.msg.ClingoFluent(s[1][0], [s[1][1]])
+    def sense_initial_state(self):
+        command = clingo_interface_gui.msg.ClingoFluent("noop", [])
+        sensedfluent =  clingo_interface_gui.msg.ClingoFluent()
+        evalfluent = []
+        goal = clingo_interface_gui.msg.ClingoInterfaceGoal(
+            command, sensedfluent, evalfluent)
+        self.client.send_goal(goal)
+        self.client.wait_for_result()
+        result = self.client.get_result()
         
-
-        print "action:", s[1][0], s[1][1]
-        goal = clingo_interface_gui.msg.ClingoInterfaceGoal(command, sense_fluent, evaluate_fluent)
-#        print goal
-        client.send_goal(goal)
-        client.wait_for_result()
-        result= client.get_result()
-#        print result
-        expectstate = []
-        for ss in state:
-            if (i+1 < len(plan)):
-                nexttime = plan[i+1][0]
-            else:    
-                nexttime = s[0]+1        
-            if ss[0]==nexttime:
-                expectstate.append(ss)
-    #        print expectstate
-
-        needreplan = 0
+        initial_file = open(self.initial_file,"w")
+        display_message = "Initial state: "
         for fluent in result.observable_fluents:
-            op = fluent.op
-            arg = fluent.args
-            if (i+1 < len(plan)):
-                nexttime = plan[i+1][0]
-            else:    
-                nexttime = s[0]+1        
+            atom = Atom(fluent.op, fluent.args, time=0)
+            initial_file.write(str(atom) + ".\n")
+            display_message += str(atom) + " "
+        initial_file.close()
+        rospy.loginfo(display_message)
 
-            curstate = (nexttime,[op]+arg)
-                
-            if curstate in expectstate:    
-                print "observation as expected: ", curstate
+    def construct_initial_state(self, previous_state, observations):
+        # Change time to 0 in previous state and
+        # replace all conflicts with observations
+
+        new_state = []
+
+        for atom in previous_state:
+            if atom.name == "at":
+                continue
+            atom.time = 0
+            add_atom = True
+            for observation in observations:
+                if observation.name == atom.name and \
+                   observation.value == atom.value and \
+                   observation.negated != atom.negated:
+                    add_atom = False
+            if add_atom:
+                new_state.append(atom)
+
+        for observation in observations:
+            observation.time = 0
+            new_state.append(observation)
+
+        initial_file = open(self.initial_file,"w")
+        display_message = "Constructed state: "
+        for atom in new_state:
+            initial_file.write(str(atom) + ".\n")
+            display_message += str(atom) + " "
+        initial_file.close()
+        rospy.loginfo(display_message)
+
+    def execute_action(self, action):
+        command = clingo_interface_gui.msg.ClingoFluent()
+        sense_fluent = clingo_interface_gui.msg.ClingoFluent()
+        if action.name == "sense":
+            command.op = "sense"
+            sense_fluent.op = action.value.name
+            sense_fluent.args = action.value.value
+        else:
+            command = clingo_interface_gui.msg.ClingoFluent(action.name, 
+                                                            action.value)
+        goal = clingo_interface_gui.msg.ClingoInterfaceGoal(command, 
+                                                            sense_fluent, [])
+        self.client.send_goal(goal)
+        self.client.wait_for_result()
+        result = self.client.get_result()
+
+        observations = []
+        for fluent in result.observable_fluents:
+            observations.append(Atom(fluent.op, fluent.args))
+        return observations
+
+    def send_finish(self):
+        if self.enable_learning:
+            command = clingo_interface_gui.msg.ClingoFluent("finish", [])
+            sensedfluent =  clingo_interface_gui.msg.ClingoFluent()
+            evalfluent = []
+            goal = clingo_interface_gui.msg.ClingoInterfaceGoal(
+                command, sensedfluent, evalfluent)
+            self.client.send_goal(goal)
+            self.client.wait_for_result()
+
+    def start(self):
+        self.sense_initial_state()
+        while True:
+            if self.domain_cost_file != None:
+                plan_available, optimization, plan, states = \
+                        self.clingo_wrapper.get_plan([self.initial_file,
+                                                      self.query_file,
+                                                      self.domain_cost_file,
+                                                      self.costs_file])
             else:
-                print "unexpected observation: ", curstate
-                needreplan = 1
+                plan_available, optimization, plan, states = \
+                        self.clingo_wrapper.get_plan([self.initial_file,
+                                                      self.query_file])
+            if not plan_available:
+                rospy.logfatal("No plan found to complete task!")
                 break
-    
-        if needreplan == 0:
-            for se in expectstate:
-                if se[1][0]=="goal":
-                    goalinfo = "goal("+ se[1][1] + ","+str(se[0])+")."
-                    print "archieve "+goalinfo        
-                    inputFile3 = open(sys.argv[3],"a")
-                    inputFile3.write(goalinfo)
-                    inputFile3.close()
-        if needreplan == 1:
-            #generate a new initial state and calling for replan
-            inputFile = open(sys.argv[2],"w")
-            inputFile2 = open(sys.argv[3],"a")
-            for fluent in result.observable_fluents:
-                op = fluent.op
-                arg = fluent.args                
-                curstate = (plan[i+1][0]-1,[op]+arg)
-            #    print curstate
-                s="("
-                for p in range(1,len(curstate[1])): #arguments from second elem in list
-                    s = s + curstate[1][p]+","
-                s = s+"0)."
-                newinit = curstate[1][0]+s
 
-                
-                print "New initial:" + newinit
-                if op in newknowledge:
-                    inputFile2.write(newinit)
-                else:
-                    inputFile.write(newinit)
-            inputFile2.close()
-            inputFile.close()
-            newresult = GeneratePlan()
+            step = 0
+            need_replan = False
+            for action in plan:
+                current_state = [state for state in states
+                                 if state.time == step]
+                observations = self.execute_action(action) 
+                next_state = [state for state in states
+                              if state.time == step+1]
+                for observation in observations:
+                    if observation not in next_state:
+                        need_replan = True
+                        break
+                if need_replan:
+                    break
+                step += 1
+
+            if need_replan:
+                self.construct_initial_state(current_state, observations)
+                continue
             
-            SendoutPlan(newresult,client)
+            rospy.loginfo("Plan successful!")
+            self.send_finish()
             break
 
 
 if __name__ == '__main__':
-#    print GeneratePlan()
     try:
-        # Initializes a rospy node so that the SimpleActionClient can
-        # publish and subscribe over ROS.
-        rospy.init_node('asp_planner_client_py')
-
-  
-        PlannerClient()
-  #      print "Result:", result
+        rospy.init_node('planner_krr2014')
+        client = PlannerClient()
+        client.start()
     except rospy.ROSInterruptException:
-        print "program interrupted before completion"
+        rospy.logwarn("Planner interrupted before completeion!")
 
 
