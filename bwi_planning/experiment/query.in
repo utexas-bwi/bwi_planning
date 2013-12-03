@@ -2,7 +2,14 @@
 %:- approach(Y,I), not callforopen(Y,I+1), I<n.
 %:- callforopen(Y,I), not gothrough(Y,I+1), I<n.
 
+% initial copied from all 
+-facing(X,0) :- door(X).
+beside(d3_508, 0).
+at(o3_508, 0).
+
 faculty(dan).
-goal(0,I):- visiting(dan,I).
+goal(0,I):- visiting(alice,I).
+goal(1,I):- visiting(dan,I).
 goal(G,I+1) :- goal(G,I), I<n.
 :- not goal(0,n).
+:- not goal(1,n).

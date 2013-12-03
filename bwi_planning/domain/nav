@@ -5,10 +5,14 @@ step(0..n).
 
 % faculty offices
 
-office(o1;;o2;;o3;;lab1).
-door(d1;;d2;;d3;;d4;;d5).
-hasdoor(o1,d1;;o2,d2;;o3,d3;;lab1,d4;;lab1,d5).
+% office(o1;;o2;;o3;;lab1).
+% door(d1;;d2;;d3;;d4;;d5).
+% hasdoor(o1,d1;;o2,d2;;o3,d3;;lab1,d4;;lab1,d5).
 
+office(o3_508;;o3_510;;o3_512;;o3_416;;l3_414a;;s3_516;;l3_436;;o3_428;;o3_426;;l3_414b;;l3_414;;o3_402;;o3_412;;o3_502;;o3_404;;o3_418;;o3_420;;o3_422;;o3_430;;o3_432).
+door(d3_508;;d3_510;;d3_512;;d3_416;;d3_414a1;;d3_414a2;;d3_414a3;;d3_5161;;d3_5162;;d3_4361;;d3_4362;;d3_428;;d3_426;;d3_414b1;;d3_414b2;;d3_414b3;;d3_402;;d3_412;;d3_502;;d3_404;;d3_418;;d3_420;;d3_422;;d3_430;;d3_432).
+
+hasdoor(o3_508,d3_508;;o3_510,d3_510;;o3_512,d3_512;;o3_416,d3_416;;l3_414a,d3_414a1;;l3_414a,d3_414a2;;l3_414a,d3_414a3;;s3_516,d3_5161;;s3_516,d3_5162;;l3_436,d3_4361;;l3_436,d3_4362;;o3_426,d3_426;;o3_428,d3_428;;l3_414b,d3_414b1;;l3_414b,d3_414b2;;l3_414b,d3_414b3;;o3_402,d3_402;;o3_412,d3_412;;o3_502,d3_502;;o3_404,d3_404;;o3_418,d3_418;;o3_420,d3_420;;o3_422,d3_422;;o3_430,d3_430;;o3_432,d3_432).
 
 % corridor
 corridor(cor).
@@ -17,7 +21,10 @@ room(cor).
 
 % accessibility
 
-acc(X,Y,cor) :- room(X),door(Y),hasdoor(X,Y).
+% acc(X,Y,cor) :- room(X), door(Y), hasdoor(X,Y).
+acc(X,Y,cor) :- room(X), door(Y), hasdoor(X,Y), Y!=d3_414a3, Y!=d3_414b3.
+acc(l3_414a,d3_414a3,l3_414).
+acc(l3_414b,d3_414b3,l3_414).
 
 indacc(X,Y,Z) :- acc(X,Y,Z).
 indacc(X,Y,Z) :- acc(X,Y,Z1), indacc(Z1,Y1,Z).
@@ -25,9 +32,13 @@ indacc(X,Y,Z) :- acc(X,Y,Z1), indacc(Z1,Y1,Z).
 % room assignment
 
 % faculty members
-inside(alice,o1,I) :- I<=n.
-inside(bob,o2,I) :- I<=n.
-inside(carol,o3,I) :- I<=n.
+% inside(alice,o1,I) :- I<=n.
+% inside(bob,o2,I) :- I<=n.
+% inside(carol,o3,I) :- I<=n.
+
+inside(alice,o3_508,I) :- I<=n.
+inside(bob,o3_510,I) :- I<=n.
+inside(carol,o3_502,I) :- I<=n.
 
 faculty(alice;;bob).
 secretary(carol).

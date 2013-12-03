@@ -25,10 +25,13 @@ class Atom(object):
 
     def __init__(self, name, value=None, time=None, negated=False):
 
+        #print "parsing: " + str(name)
+
         if value != None:
             if name.find("(") != -1:
                 raise ValueError("Malformed atom - name: %s, value: %s"%
                                  str(name),str(value))
+            self.name = name
             if isinstance(value, Atom):
                 self.value = value
             else:
@@ -104,6 +107,10 @@ class Atom(object):
                     self.time = None
                     self.type = Atom.TERM
                     return
+            else:
+                self.time = None
+                self.type = Atom.TERM
+                return
         else:
             self.time = time
 
@@ -144,13 +151,15 @@ class Atom(object):
         return False
 
     def __str__(self):
+        prefix = '-' if self.negated else ''
         if self.type == Atom.VARIABLE:
             return self.value
         if self.type == Atom.LIST:
             return ",".join([str(atom) for atom in self.value])
         if self.type == Atom.TERM:
-            return self.name + "(" + str(self.value) + ")"
-        return self.name + "(" + str(self.value) + "," + str(self.time) + ")"
+            return prefix + self.name + "(" + str(self.value) + ")"
+        return prefix + self.name + \
+                "(" + str(self.value) + "," + str(self.time) + ")"
 
     def __repr__(self):
         return self.__str__()
@@ -224,10 +233,6 @@ class ClingoWrapper(object):
 
             # Parse Output
             out_file = open("result","r")
-            if out_file.readline() == "UNSATISFIABLE\n":
-                out_file.close()
-                continue
-
             linelist = []
             no_plan_available = False
             for line in out_file:
@@ -329,7 +334,7 @@ class PlannerClient(object):
         initial_file = open(self.initial_file,"w")
         display_message = "Initial state: "
         for fluent in result.observable_fluents:
-            atom = Atom(fluent.op, fluent.args, time=0)
+            atom = Atom(fluent.op, ",".join(fluent.args), time=0)
             initial_file.write(str(atom) + ".\n")
             display_message += str(atom) + " "
         initial_file.close()
@@ -362,7 +367,7 @@ class PlannerClient(object):
         initial_file.close()
         rospy.loginfo(display_message)
 
-    def execute_action(self, action, next_state):
+    def execute_action(self, action, next_state, next_step):
 
         rospy.loginfo("Executing action: " + str(action))
 
@@ -375,10 +380,10 @@ class PlannerClient(object):
         if action.name == "askploc":
             command.op = "sense"
             sense_fluent.op = "ploc"
-            sense_fluent.args = action.value
+            sense_fluent.args = [str(action.value)]
         else:
             command = clingo_interface_gui.msg.ClingoFluent(action.name, 
-                                                            action.value)
+                                                            [str(action.value)])
         goal = clingo_interface_gui.msg.ClingoInterfaceGoal(command, 
                                                             sense_fluent, [])
         self.client.send_goal(goal)
@@ -387,8 +392,8 @@ class PlannerClient(object):
 
         observations = []
         for fluent in result.observable_fluents:
-            observations.append(Atom(fluent.op, fluent.args))
-        rospy.loginfo("  Observations: " + observations)
+            observations.append(Atom(fluent.op, ",".join(fluent.args),time=next_step))
+        rospy.loginfo("  Observations: " + str(observations))
         return observations
 
     def send_finish(self):
@@ -427,9 +432,10 @@ class PlannerClient(object):
                                  if state.time == step]
                 next_state = [state for state in states
                               if state.time == step+1]
-                observations = self.execute_action(action, next_state) 
+                observations = self.execute_action(action, next_state, step+1) 
                 for observation in observations:
                     if observation not in next_state:
+                        rospy.logwarn("Unexpected observation: " + str(observation))
                         need_replan = True
                         break
                 if need_replan:
