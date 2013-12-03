@@ -3,7 +3,6 @@
 import os
 import signal
 import subprocess
-import sys
 import threading
 
 import actionlib
@@ -11,10 +10,6 @@ import clingo_interface_gui.msg
 import rospy
 
 # Brings in the SimpleActionClient
-
-domainFile = sys.argv[1]
-queryFile = sys.argv[3]
-initialFile = sys.argv[2]
 
 class Atom(object):
 
@@ -24,8 +19,8 @@ class Atom(object):
     VARIABLE = "variable"
     LIST = "list"
 
-    ACTION_NAMES = ["sense", "goto", "gothrough", "callforopen", "approach"]
-    FLUENT_NAMES = ["at", "open", "visited", "beside", "open", "visited", 
+    ACTION_NAMES = ["askploc", "greet", "gothrough", "opendoor", "approach"]
+    FLUENT_NAMES = ["at", "open", "visiting", "beside", "open", 
                     "beside", "inside", "goal", "facing"]
 
     def __init__(self, name, value=None, time=None, negated=False):
@@ -47,7 +42,7 @@ class Atom(object):
             self.type = None
             for i in range(len(name)):
                 if name[i] == "," and parenthesis_count == 0:
-                    self.type == Atom.LIST
+                    self.type = Atom.LIST
                     start.append(i)
                     end.append(i)
                 if name[i] == "(":
@@ -67,9 +62,7 @@ class Atom(object):
                 self.name = None
                 self.value = [Atom(name[start[i]+1:end[i]]) 
                               for i in range(len(start))]
-                return
-                
-            if name.find("(") == -1:
+            elif name.find("(") == -1:
                 self.name = None
                 self.type = Atom.VARIABLE
                 self.value = name
@@ -103,7 +96,7 @@ class Atom(object):
             if self.value.type == Atom.LIST:
                 try:
                     self.time = int(str(self.value.value[-1]))
-                    self.value.value = self.value.values[:-1]
+                    self.value.value = self.value.value[:-1]
                     if len(self.value.value) == 1:
                         self.value = self.value.value[0]
                 except ValueError:
@@ -123,14 +116,44 @@ class Atom(object):
 
         raise ValueError("Malformed atom - Unknown action/fluent: %s"%str(name))
 
+    def conflicts_with(self, other):
+
+        # Check for hard negation
+        if self.name == other.name and \
+           self.value == other.value and \
+           self.negated != other.negated:
+            return True
+
+        # Check for uniqueness constraints
+        if (self.name == "at" and other.name == "at" or \
+            self.name == "facing" and other.name == "facing" or \
+            self.name == "beside" and other.name == "beside") and \
+           self.value != other.value and \
+           not self.negated and not other.negated:
+            return True
+
+        # Check for uniqueness constraint for inside
+        # if the person is same, but the location is different and both 
+        # fluents are not negated
+        if self.name == "inside" and other.name == "inside" and \
+           self.value.value[0] == other.value.value[0] and \
+           self.value.value[1] != other.value.value[1] and \
+           not self.negated and not other.negated:
+            return True
+
+        return False
+
     def __str__(self):
         if self.type == Atom.VARIABLE:
             return self.value
         if self.type == Atom.LIST:
-            return ",".join(self.value)
+            return ",".join([str(atom) for atom in self.value])
         if self.type == Atom.TERM:
             return self.name + "(" + str(self.value) + ")"
         return self.name + "(" + str(self.value) + "," + str(self.time) + ")"
+
+    def __repr__(self):
+        return self.__str__()
 
     def __eq__(self, other):
         return self.name == other.name and \
@@ -160,6 +183,7 @@ class Command(object):
         self.outfile = outfile
 
     def run(self, timeout):
+        rospy.logdebug("Running command: " + self.cmd)
         def target():
             self.process = subprocess.Popen(self.cmd, shell=True, 
                                             stdout=self.outfile, 
@@ -180,22 +204,72 @@ class Command(object):
 class ClingoWrapper(object):
 
     def __init__(self):
-        self.clingo_timeout = rospy.get_param("clingo_timeout", 60)
-        self.clingo_steps = rospy.get_param("clingo_steps", 20)
-        self.clingo_threads = rospy.get_param("clingo_threads", 6)
-        self.domain_file = rospy.get_param("domain_file", "nav")
+        self.clingo_timeout = rospy.get_param("~clingo_timeout", 60)
+        self.clingo_steps = rospy.get_param("~clingo_steps", 20)
+        self.clingo_threads = rospy.get_param("~clingo_threads", 6)
+        self.domain_file = rospy.get_param("~domain_file")
 
     def get_plan(self, additional_files):
+
+        for n in range(self.clingo_steps):
+            # Run clingo
+            additional_files_str = " ".join(additional_files)
+            out_file = open("result", "w")
+            clingo_command = Command("gringo -c n=" + str(n) +
+                                     " " + self.domain_file + 
+                                     " " + additional_files_str + 
+                                     " | rosrun clasp clasp -t " + 
+                                     str(self.clingo_threads), out_file)
+            clingo_command.run(self.clingo_timeout)
+
+            # Parse Output
+            out_file = open("result","r")
+            if out_file.readline() == "UNSATISFIABLE\n":
+                out_file.close()
+                continue
+
+            linelist = []
+            no_plan_available = False
+            for line in out_file:
+                linelist.append(line)
+                if line[:13] == "UNSATISFIABLE":
+                    out_file.close()
+                    no_plan_available = True
+                    break
+                if line[:11] == "SATISFIABLE":
+                    optimization = n
+                    plan_line = linelist[-2]
+
+            if no_plan_available:
+                continue
+
+            try:
+                plan, states = parse_plan(plan_line)
+            except ValueError as e:
+                rospy.logerr("Received plan from clasp, but unable to parse plan:" +
+                             plan_line)
+                rospy.logerr("  Error: " + str(e))
+                return False, 0, None, None
+
+            out_file.close()
+            return True, optimization, plan, states
+        return False, 0, None, None
+
+    def get_plan_costs(self, additional_files):
 
         # Run clingo
         additional_files_str = " ".join(additional_files)
         out_file = open("result", "w")
-        clingo_command = Command("gringo -c maxstep=" + self.clingo_steps +
+        clingo_command = Command("gringo -c n=" + str(self.clingo_steps) +
                                  " " + self.domain_file + 
                                  " " + additional_files_str + 
                                  " | rosrun clasp clasp -t " + 
-                                 self.clingo_threads, out_file)
-        clingo_command.run(self.clingo_timeout)
+                                 str(self.clingo_threads), out_file)
+        ret_code = clingo_command.run(self.clingo_timeout)
+
+        if ret_code != 0:
+            rospy.logerr("Clasp encountered error")
+            return False, 0, None, None
 
         # Parse Output
         out_file = open("result","r")
@@ -209,8 +283,8 @@ class ClingoWrapper(object):
             if line[:13] == "Optimization:" and linelist[-2][:9] != "  Optimum":
                 optimization = 1
                 optimization_line = linelist[-1]
-                print optimization_line
                 plan_line = linelist[-2]
+
         try:
             plan, states = parse_plan(plan_line)
         except ValueError as e:
@@ -225,9 +299,11 @@ class ClingoWrapper(object):
 class PlannerClient(object):
 
     def __init__(self):
-        self.client = actionlib.SimpleActionClient('clingo_interface_gui', 
-                clingo_interface_gui.msg.ClingoInterfaceAction)
-        self.client.wait_for_server()
+        self.dry_run = rospy.get_param("~dry_run", False)
+        if not self.dry_run: 
+            self.client = actionlib.SimpleActionClient('clingo_interface_gui', 
+                    clingo_interface_gui.msg.ClingoInterfaceAction)
+            self.client.wait_for_server()
         self.clingo_interface = ClingoWrapper()
         self.initial_file = rospy.get_param("~initial_file")
         self.query_file = rospy.get_param("~query_file")
@@ -236,6 +312,11 @@ class PlannerClient(object):
         self.enable_learning = rospy.get_param("~enable_learning", False)
 
     def sense_initial_state(self):
+
+        if self.dry_run:
+            # Assume initial file supplied by user has initial state
+            return
+
         command = clingo_interface_gui.msg.ClingoFluent("noop", [])
         sensedfluent =  clingo_interface_gui.msg.ClingoFluent()
         evalfluent = []
@@ -261,14 +342,10 @@ class PlannerClient(object):
         new_state = []
 
         for atom in previous_state:
-            if atom.name == "at":
-                continue
             atom.time = 0
             add_atom = True
             for observation in observations:
-                if observation.name == atom.name and \
-                   observation.value == atom.value and \
-                   observation.negated != atom.negated:
+                if observation.conflicts_with(atom):
                     add_atom = False
             if add_atom:
                 new_state.append(atom)
@@ -285,13 +362,20 @@ class PlannerClient(object):
         initial_file.close()
         rospy.loginfo(display_message)
 
-    def execute_action(self, action):
+    def execute_action(self, action, next_state):
+
+        rospy.loginfo("Executing action: " + str(action))
+
+        if self.dry_run:
+            rospy.loginfo("  Observations: " + str(next_state))
+            return next_state
+
         command = clingo_interface_gui.msg.ClingoFluent()
         sense_fluent = clingo_interface_gui.msg.ClingoFluent()
-        if action.name == "sense":
+        if action.name == "askploc":
             command.op = "sense"
-            sense_fluent.op = action.value.name
-            sense_fluent.args = action.value.value
+            sense_fluent.op = "ploc"
+            sense_fluent.args = action.value
         else:
             command = clingo_interface_gui.msg.ClingoFluent(action.name, 
                                                             action.value)
@@ -304,6 +388,7 @@ class PlannerClient(object):
         observations = []
         for fluent in result.observable_fluents:
             observations.append(Atom(fluent.op, fluent.args))
+        rospy.loginfo("  Observations: " + observations)
         return observations
 
     def send_finish(self):
@@ -321,26 +406,28 @@ class PlannerClient(object):
         while True:
             if self.domain_cost_file != None:
                 plan_available, optimization, plan, states = \
-                        self.clingo_wrapper.get_plan([self.initial_file,
+                        self.clingo_interface.get_plan_costs([self.initial_file,
                                                       self.query_file,
                                                       self.domain_cost_file,
                                                       self.costs_file])
             else:
                 plan_available, optimization, plan, states = \
-                        self.clingo_wrapper.get_plan([self.initial_file,
+                        self.clingo_interface.get_plan([self.initial_file,
                                                       self.query_file])
             if not plan_available:
                 rospy.logfatal("No plan found to complete task!")
                 break
+            rospy.loginfo("Found plan (optimization = %i): %s"%(optimization,
+                                                                plan))
 
             step = 0
             need_replan = False
             for action in plan:
                 current_state = [state for state in states
                                  if state.time == step]
-                observations = self.execute_action(action) 
                 next_state = [state for state in states
                               if state.time == step+1]
+                observations = self.execute_action(action, next_state) 
                 for observation in observations:
                     if observation not in next_state:
                         need_replan = True

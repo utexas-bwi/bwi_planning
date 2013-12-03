@@ -1,0 +1,3 @@
+at(lab1,0).
+-beside(X,0) :- door(X).
+-facing(X,0) :- door(X).
