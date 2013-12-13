@@ -1,9 +1,9 @@
 #include <fstream>
 #include <yaml-cpp/yaml.h>
 
-#include <segbot_common/structures.h>
+#include <bwi_planning_common/structures.h>
 
-namespace bwi_common {
+namespace bwi_planning_common {
   
   void readLocationFile(const std::string& filename, 
       std::vector<std::string>& locations, std::vector<int32_t>& location_map) {

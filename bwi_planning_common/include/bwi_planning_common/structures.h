@@ -6,7 +6,7 @@
 #include <string>
 #include <yaml-cpp/yaml.h>
 
-namespace bwi_common {
+namespace bwi_planning_common {
 
   typedef cv::Point2f Point2f;
 
@@ -24,6 +24,6 @@ namespace bwi_common {
 
   void readDoorFile(const std::string& filename, std::vector<Door>& doors);
 
-} /* bwi_common */
+} /* bwi_planning_common */
 
 #endif /* end of include guard: STRUCTURES_9TKSKPHM */

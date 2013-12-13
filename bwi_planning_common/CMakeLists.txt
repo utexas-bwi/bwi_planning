@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(segbot_common)
+project(bwi_planning_common)
 
 find_package(catkin REQUIRED COMPONENTS message_generation std_msgs)
 find_package(OpenCV REQUIRED)
@@ -32,7 +32,7 @@ catkin_package(
     ${OpenCV_INCLUDE_DIRS}
     ${YAML_CPP_INCLUDE_DIRS}
   LIBRARIES
-    ${PROECT_NAME}
+    ${PROJECT_NAME}
     ${OpenCV_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
 )
