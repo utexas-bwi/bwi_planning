@@ -24,6 +24,8 @@ namespace bwi_planning_common {
 
   void readDoorFile(const std::string& filename, std::vector<Door>& doors);
 
+  const size_t NO_DOOR_IDX = (size_t) -1; 
+
 } /* bwi_planning_common */
 
 #endif /* end of include guard: STRUCTURES_9TKSKPHM */
