@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(bwi_planning_common)
 
-find_package(catkin REQUIRED COMPONENTS message_generation std_msgs)
+find_package(catkin REQUIRED COMPONENTS bwi_mapper bwi_tools message_generation std_msgs)
 find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
@@ -25,6 +25,8 @@ catkin_package(
     opencv2
     yaml-cpp
   CATKIN_DEPENDS
+    bwi_mapper
+    bwi_tools
     message_runtime
     std_msgs
   INCLUDE_DIRS
@@ -39,6 +41,7 @@ catkin_package(
 
 include_directories(
   include
+  ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   ${YAML_CPP_INCLUDE_DIRS}
 )
@@ -47,18 +50,33 @@ add_library(${PROJECT_NAME}
   src/structures.cpp
 )
 target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${YAML_CPP_LIBRARIES}
 )
+
+add_executable(mark_locations
+  src/mark_locations.cpp
+)
+target_link_libraries(mark_locations
+  ${PROJECT_NAME}
+)
+
+add_executable(mark_doors
+  src/mark_doors.cpp
+)
+target_link_libraries(mark_doors
+  ${PROJECT_NAME}
+)
   
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME} mark_doors mark_locations
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(DIRECTORY
-  include/
+  include/${PROJECT_NAME}
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )
  
