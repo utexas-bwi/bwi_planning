@@ -42,6 +42,7 @@
 #include <bwi_mapper/map_utils.h>
 #include <bwi_mapper/map_inflator.h>
 #include <bwi_planning_common/structures.h>
+#include <bwi_tools/filesystem.h>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -94,6 +95,19 @@ int main(int argc, char** argv) {
 
   std::vector<int32_t> location_map;
   std::vector<std::string> locations;
+
+  std::cout << "Reading locations from file: " << 
+    bwi::fs::canonicalize(argv[3]) << std::endl;
+  std::cout << "Will write doors to file: " << 
+    bwi::fs::canonicalize(door_file) << std::endl;
+
+  std::cout << "First click selects door center." << std::endl <<
+    "Second click selects the 2 approach points." << std::endl <<
+    "Third click selects the door width." << std::endl <<
+    "Press 'c' at any time to clear current selection." << std::endl <<
+    "Press 'n' after thee clicks to accept door with name." << std::endl <<
+    "Press 'w' to write door file and exit program." << std::endl;
+
   bwi_planning_common::readLocationFile(argv[3], locations, location_map);
 
   while (true) {
@@ -224,6 +238,9 @@ int main(int argc, char** argv) {
       std::ofstream door_fout(door_file.c_str());
       door_fout << door_ss.str();
       door_fout.close();
+      std::cout << "Wrote doors to file: " << 
+        bwi::fs::canonicalize(door_file) << std::endl;
+
       return 0;
     }
 

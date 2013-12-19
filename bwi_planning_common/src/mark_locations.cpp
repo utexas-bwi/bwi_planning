@@ -38,15 +38,13 @@
 
 #include <fstream>
 
-#include <boost/filesystem.hpp>
 
 #include <bwi_mapper/map_loader.h>
 #include <bwi_planning_common/structures.h>
+#include <bwi_tools/filesystem.h>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
-
-namespace fs = boost::filesystem;
 
 cv::Point clicked_pt, release_pt, mouseover_pt;
 bool button_clicked = false;
@@ -79,7 +77,6 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  fs::path location_path = fs::absolute(fs::path(argv[2]), fs::current_path());
   std::string location_file(argv[2]);
 
   bwi_mapper::MapLoader mapper(argv[1]);
@@ -99,6 +96,13 @@ int main(int argc, char** argv) {
   bool region_awaiting_approval = false;
   cv::Point start_pt;
   cv::Point end_pt;
+
+  std::cout << "Will write locations to file: " << 
+    bwi::fs::canonicalize(location_file) << std::endl;
+  std::cout << "Select rectangular region using click + drag." << std::endl <<
+    "Press 'a' to accept selection into current location." << std::endl <<
+    "Press 'n' to accept current location with name." << std::endl <<
+    "Press 'w' to write locations file and exit program." << std::endl;
 
   while (true) {
 
@@ -201,8 +205,9 @@ int main(int argc, char** argv) {
       std::ofstream location_fout(location_file.c_str());
       location_fout << location_ss.str();
       location_fout.close();
-      std::cout << "Wrote locations: " << 
-        location_path.normalize().string() << std::endl;
+      std::cout << "Wrote locations to file: " <<
+        bwi::fs::canonicalize(location_file) << std::endl;
+      return 0;
     } 
   }
 
