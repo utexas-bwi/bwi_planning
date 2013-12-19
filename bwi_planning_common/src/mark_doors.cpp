@@ -57,11 +57,10 @@ enum State {
   DOOR_WAIT = 3,
 } global_state = DOOR_CENTER;
 
-cv::Point clicked_pt, mouseover_pt;
+cv::Point mouseover_pt;
 bool increment_state = false;
 void mouseCallback(int event, int x, int y, int, void*) {
   if (event == cv::EVENT_LBUTTONDOWN) {
-    clicked_pt = cv::Point(x, y);
     increment_state = true;
   } else if (event == cv::EVENT_MOUSEMOVE) {
     mouseover_pt = cv::Point(x, y);
@@ -188,7 +187,7 @@ int main(int argc, char** argv) {
       bwi::Point2f difference_pt = 
         (doors[i].approach_points[1] - doors[i].approach_points[0]);
       cv::Point center_pt = toGrid(0.5 * 
-          (current_door.approach_points[1] + current_door.approach_points[0]),
+          (doors[i].approach_points[1] + doors[i].approach_points[0]),
           info);
       cv::circle(image, toGrid(doors[i].approach_points[0], info), 
           2, cv::Scalar(0,0,255), -1); 
@@ -196,7 +195,7 @@ int main(int argc, char** argv) {
           2, cv::Scalar(0,0,255), -1); 
 
       float approach_orientation = atan2f(difference_pt.y, difference_pt.x);
-      float door_width_pxls = current_door.width / info.resolution;
+      float door_width_pxls = doors[i].width / info.resolution;
       cv::Point door_add = door_width_pxls * 
         cv::Point2f(cosf(approach_orientation + M_PI / 2),
                     sinf(approach_orientation + M_PI / 2));
