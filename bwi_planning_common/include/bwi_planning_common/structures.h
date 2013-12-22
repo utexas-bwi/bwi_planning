@@ -21,6 +21,7 @@ namespace bwi_planning_common {
   };
 
   void readDoorFile(const std::string& filename, std::vector<Door>& doors);
+  size_t resolveDoor(const std::string& door, const std::vector<Door>& doors);
 
   const size_t NO_DOOR_IDX = (size_t) -1; 
   const int INVALID_LOCATION = -1;

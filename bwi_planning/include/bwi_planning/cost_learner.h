@@ -25,7 +25,10 @@ namespace bwi_planning {
       void writeValuesFile(int episode = -1);
       void readValuesFile(int episode = -1);
 
-      void addSample(std::string loc, int door_from, int door_to, float cost);
+      bool addSample(const std::string& loc, int door_from, int door_to, 
+          float cost);
+      bool addSample(const std::string& loc, const std::string& door_from, 
+          const std::string& door_to, float cost);
       void finalizeEpisode();
 
     private:

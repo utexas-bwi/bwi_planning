@@ -3,17 +3,30 @@ project(bwi_planning)
 
 find_package(catkin REQUIRED COMPONENTS
   bwi_planning_common
+  message_generation
   roscpp
+  std_msgs
   std_srvs
 )
 find_package(Boost REQUIRED)
+
+add_service_files(
+  FILES
+  CostLearnerInterface.srv
+)
+
+generate_messages(
+  DEPENDENCIES std_msgs
+)
 
 catkin_package(
   DEPENDS
     boost
   CATKIN_DEPENDS
     bwi_planning_common
+    message_runtime
     roscpp
+    std_msgs
     std_srvs
   INCLUDE_DIRS
     include

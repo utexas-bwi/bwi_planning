@@ -181,8 +181,13 @@ namespace bwi_planning {
     }
   }
 
-  void CostLearner::addSample(std::string loc, int door_from, int door_to, 
-      float cost) {
+  bool CostLearner::addSample(const std::string& loc, int door_from, 
+      int door_to, float cost) {
+
+    if (door_from >= (int) doors_.size() || door_from < 0 ||
+        door_to >= (int) doors_.size() || door_to < 0) {
+      return false;
+    }
 
     ROS_INFO_STREAM(std::string("Adding sample ") << 
         doors_[door_from].name << "->" <<
@@ -204,6 +209,21 @@ namespace bwi_planning {
     distance_estimates_[loc][door_to][door_from] = final_cost;
     distance_samples_[loc][door_from][door_to] = samples + 1;
     distance_samples_[loc][door_to][door_from] = samples + 1;
+  }
+
+  bool CostLearner::addSample(const std::string& loc, 
+      const std::string& door_from, const std::string& door_to, 
+      float cost) {
+
+    size_t door_from_idx = bwi_planning_common::resolveDoor(door_from, doors_);
+    size_t door_to_idx = bwi_planning_common::resolveDoor(door_to, doors_);
+
+    if (door_from_idx == bwi_planning_common::NO_DOOR_IDX || 
+        door_to_idx == bwi_planning_common::NO_DOOR_IDX) {
+      return false;
+    }
+
+    return addSample(loc, door_from_idx, door_to_idx, cost);
   }
 
   void CostLearner::finalizeEpisode() {

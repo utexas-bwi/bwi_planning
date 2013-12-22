@@ -55,4 +55,15 @@ namespace bwi_planning_common {
     }
   }
 
+  size_t resolveDoor(const std::string& door, const std::vector<Door>& doors) {
+    
+    for (size_t i = 0; i < doors.size(); ++i) {
+      if (doors[i].name == door) {
+        return i;
+      }
+    }
+
+    return bwi_planning_common::NO_DOOR_IDX;
+  }
+
 } /* bwi_common */
