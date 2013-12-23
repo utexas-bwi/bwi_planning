@@ -1,4 +1,6 @@
+#include <boost/filesystem.hpp>
 #include <fstream>
+#include <stdexcept>
 #include <yaml-cpp/yaml.h>
 
 #include <bwi_planning_common/structures.h>
@@ -7,6 +9,10 @@ namespace bwi_planning_common {
   
   void readLocationFile(const std::string& filename, 
       std::vector<std::string>& locations, std::vector<int32_t>& location_map) {
+
+    if (!boost::filesystem::exists(filename)) {
+      throw std::runtime_error("Location file does not exist: " + filename);
+    }
     std::ifstream fin(filename.c_str());
     YAML::Parser parser(fin);
 
@@ -29,6 +35,11 @@ namespace bwi_planning_common {
   }
 
   void readDoorFile(const std::string& filename, std::vector<Door>& doors) {
+
+    if (!boost::filesystem::exists(filename)) {
+      throw std::runtime_error("Door file does not exist: " + filename);
+    }
+
     std::ifstream fin(filename.c_str());
     YAML::Parser parser(fin);
 

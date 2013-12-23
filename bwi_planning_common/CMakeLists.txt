@@ -4,6 +4,7 @@ project(bwi_planning_common)
 find_package(catkin REQUIRED COMPONENTS bwi_mapper bwi_tools message_generation std_msgs)
 find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(Boost REQUIRED COMPONENTS filesystem)
 pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
 
 add_message_files(
@@ -22,6 +23,7 @@ generate_messages(
 
 catkin_package(
   DEPENDS 
+    boost
     opencv2
     yaml-cpp
   CATKIN_DEPENDS
@@ -31,16 +33,19 @@ catkin_package(
     std_msgs
   INCLUDE_DIRS
     include
+    ${Boost_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${YAML_CPP_INCLUDE_DIRS}
   LIBRARIES
     ${PROJECT_NAME}
+    ${Boost_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
 )
 
 include_directories(
   include
+  ${Boost_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   ${YAML_CPP_INCLUDE_DIRS}
@@ -50,6 +55,7 @@ add_library(${PROJECT_NAME}
   src/structures.cpp
 )
 target_link_libraries(${PROJECT_NAME}
+  ${Boost_LIBRARIES}
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${YAML_CPP_LIBRARIES}

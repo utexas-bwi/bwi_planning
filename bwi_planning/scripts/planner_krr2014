@@ -5,11 +5,15 @@ import signal
 import subprocess
 import threading
 
-import actionlib
-import clingo_interface_gui.msg
 import rospy
 
-# Brings in the SimpleActionClient
+from bwi_planning.srv import CostLearnerInterface
+from bwi_planning_common.srv import PlannerInterface
+from bwi_planning_common.msg import PlannerAtom
+from bwi_tools import WallRate
+from segbot_gui.srv import QuestionDialog, QuestionDialogRequest
+from segbot_simulation_apps.srv import DoorHandlerInterface
+from std_srvs.srv import Empty
 
 class Atom(object):
 
@@ -184,7 +188,7 @@ def parse_plan(plan_string):
     states = sorted(states, key=lambda atom: atom.time)
     return plan,states
 
-class Command(object):
+class ClingoCommand(object):
 
     def __init__(self, cmd, outfile):
         self.cmd = cmd
@@ -224,7 +228,7 @@ class ClingoWrapper(object):
             # Run clingo
             additional_files_str = " ".join(additional_files)
             out_file = open("result", "w")
-            clingo_command = Command("gringo -c n=" + str(n) +
+            clingo_command = ClingoCommand("gringo -c n=" + str(n) +
                                      " " + self.domain_file + 
                                      " " + additional_files_str + 
                                      " | rosrun clasp clasp -t " + 
@@ -265,7 +269,7 @@ class ClingoWrapper(object):
         # Run clingo
         additional_files_str = " ".join(additional_files)
         out_file = open("result", "w")
-        clingo_command = Command("gringo -c n=" + str(self.clingo_steps) +
+        clingo_command = ClingoCommand("gringo -c n=" + str(self.clingo_steps) +
                                  " " + self.domain_file + 
                                  " " + additional_files_str + 
                                  " | rosrun clasp clasp -t " + 
@@ -301,20 +305,28 @@ class ClingoWrapper(object):
         out_file.close()
         return True, optimization, plan, states
 
-class PlannerClient(object):
+class ActionExecutor(object):
 
-    def __init__(self):
-        self.dry_run = rospy.get_param("~dry_run", False)
+    def __init__(self, dry_run=False):
+
+        self.dry_run = dry_run
+        self.auto_open_door = rospy.get_param("auto_open_door", False)
+
+        # segbot gui
+        rospy.wait_for_service('question_dialog')
+        self.gui = rospy.ServiceProxy('question_dialog', QuestionDialog)
+
         if not self.dry_run: 
-            self.client = actionlib.SimpleActionClient('clingo_interface_gui', 
-                    clingo_interface_gui.msg.ClingoInterfaceAction)
-            self.client.wait_for_server()
-        self.clingo_interface = ClingoWrapper()
-        self.initial_file = rospy.get_param("~initial_file")
-        self.query_file = rospy.get_param("~query_file")
-        self.domain_cost_file = rospy.get_param("~domain_cost_file", None)
-        self.costs_file = rospy.get_param("~costs_file", None)
-        self.enable_learning = rospy.get_param("~enable_learning", False)
+
+            # logical task executor
+            rospy.wait_for_service('execute_logical_goal')
+            self.nav_executor = rospy.ServiceProxy('execute_logical_goal', 
+                                             PlannerInterface)
+
+            # simulation - automatic door opening
+            if self.auto_open_door:
+                self.update_doors = rospy.ServiceProxy('update_doors', 
+                                                 DoorHandlerInterface)
 
     def sense_initial_state(self):
 
@@ -322,23 +334,93 @@ class PlannerClient(object):
             # Assume initial file supplied by user has initial state
             return
 
-        command = clingo_interface_gui.msg.ClingoFluent("noop", [])
-        sensedfluent =  clingo_interface_gui.msg.ClingoFluent()
-        evalfluent = []
-        goal = clingo_interface_gui.msg.ClingoInterfaceGoal(
-            command, sensedfluent, evalfluent)
-        self.client.send_goal(goal)
-        self.client.wait_for_result()
-        result = self.client.get_result()
+        if self.auto_open_door:
+            self.update_doors("", False, True) #Close all doors
+
+        result = self.nav_executor(PlannerAtom("noop", []))
         
         initial_file = open(self.initial_file,"w")
         display_message = "Initial state: "
-        for fluent in result.observable_fluents:
+        for fluent in result.observations:
             atom = Atom(fluent.op, ",".join(fluent.args), time=0)
             initial_file.write(str(atom) + ".\n")
             display_message += str(atom) + " "
         initial_file.close()
         rospy.loginfo(display_message)
+
+    def execute_action(self, action, next_state, next_step):
+
+        rospy.loginfo("Executing action: " + str(action))
+
+        if self.dry_run and action.name != "askploc":
+            rospy.loginfo("  Observations: " + str(next_state))
+            return next_state
+
+        if (action.name == "approach" or action.name == "gothrough"):
+            response = self.nav_executor(PlannerAtom(action.name, 
+                                                     [str(action.value)]))
+            result = response.observations
+
+        # opendoor, askploc, greet
+        if action.name == "opendoor":
+            if self.auto_open_door:
+                self.update_doors(str(action.value), True, False)
+            else:
+                self.gui(QuestionDialogRequest.DISPLAY,
+                         "Can you open door " + str(action.value) + "?",
+                         [], 0.0)
+            rate = WallRate(0.5)
+            for i in range(60):
+                response = self.nav_executor(PlannerAtom("sensedoor", 
+                                              [str(action.value)]))
+                result = response.observations
+                for fluent in result:
+                    if (fluent.name == "open" and 
+                        fluent.value[0] == str(action.value)):
+                        self.gui(QuestionDialogRequest.DISPLAY,
+                                 "Thanks!!", [], 0.0)
+                        break
+
+                rate.sleep()
+
+        if action.name == "askploc":
+            response = self.gui(QuestionDialogRequest.TEXT_QUESTION, 
+                           "Can you tell me where " + str(action.value) + "is?",
+                           [], 30.0)
+            result = [PlannerAtom("inside",[str(action.value), response.text])] 
+
+        if action.name == "greet":
+            self.gui(QuestionDialogRequest.DISPLAY,
+                     "Hello " + str(action.value) + "?",
+                     [], 0.0)
+            result =  [PlannerAtom("visiting",[str(action.value)])]
+
+        observations = []
+        for fluent in result:
+            observations.append(Atom(fluent.op, ",".join(fluent.args),time=next_step))
+        rospy.loginfo("  Observations: " + str(observations))
+        return observations
+
+
+class PlannerClient(object):
+
+    def __init__(self):
+        self.dry_run = rospy.get_param("~dry_run", False)
+        self.clingo_interface = ClingoWrapper()
+        self.initial_file = rospy.get_param("~initial_file")
+        self.query_file = rospy.get_param("~query_file")
+        self.domain_cost_file = rospy.get_param("~domain_cost_file", None)
+        self.costs_file = rospy.get_param("~costs_file", None)
+        self.enable_learning = rospy.get_param("~enable_learning", False)
+
+        if self.enable_learning: 
+            rospy.wait_for_service('cost_learner/finalize_episode')
+            rospy.wait_for_service('cost_learner/add_sample')
+            self.finalize_episode = \
+                    rospy.ServiceProxy('cost_learner/finalize_episode', Empty)
+            self.add_sample = \
+                    rospy.ServiceProxy('cost_learner/add_sample', 
+                                       CostLearnerInterface)
 
     def construct_initial_state(self, previous_state, observations):
         # Change time to 0 in previous state and
@@ -367,47 +449,12 @@ class PlannerClient(object):
         initial_file.close()
         rospy.loginfo(display_message)
 
-    def execute_action(self, action, next_state, next_step):
-
-        rospy.loginfo("Executing action: " + str(action))
-
-        if self.dry_run:
-            rospy.loginfo("  Observations: " + str(next_state))
-            return next_state
-
-        command = clingo_interface_gui.msg.ClingoFluent()
-        sense_fluent = clingo_interface_gui.msg.ClingoFluent()
-        if action.name == "askploc":
-            command.op = "sense"
-            sense_fluent.op = "ploc"
-            sense_fluent.args = [str(action.value)]
-        else:
-            command = clingo_interface_gui.msg.ClingoFluent(action.name, 
-                                                            [str(action.value)])
-        goal = clingo_interface_gui.msg.ClingoInterfaceGoal(command, 
-                                                            sense_fluent, [])
-        self.client.send_goal(goal)
-        self.client.wait_for_result()
-        result = self.client.get_result()
-
-        observations = []
-        for fluent in result.observable_fluents:
-            observations.append(Atom(fluent.op, ",".join(fluent.args),time=next_step))
-        rospy.loginfo("  Observations: " + str(observations))
-        return observations
-
     def send_finish(self):
         if self.enable_learning:
-            command = clingo_interface_gui.msg.ClingoFluent("finish", [])
-            sensedfluent =  clingo_interface_gui.msg.ClingoFluent()
-            evalfluent = []
-            goal = clingo_interface_gui.msg.ClingoInterfaceGoal(
-                command, sensedfluent, evalfluent)
-            self.client.send_goal(goal)
-            self.client.wait_for_result()
+            self.finalize_episode()
 
     def start(self):
-        self.sense_initial_state()
+        self.executor.sense_initial_state()
         while True:
             if self.domain_cost_file != None:
                 plan_available, optimization, plan, states = \
@@ -432,7 +479,9 @@ class PlannerClient(object):
                                  if state.time == step]
                 next_state = [state for state in states
                               if state.time == step+1]
-                observations = self.execute_action(action, next_state, step+1) 
+                # TODO record time here and add sample
+                observations = \
+                        self.executor.execute_action(action, next_state, step+1) 
                 for observation in observations:
                     if observation not in next_state:
                         rospy.logwarn("Unexpected observation: " + str(observation))
