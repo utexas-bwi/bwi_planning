@@ -59,3 +59,9 @@ add_executable(cost_learner
 target_link_libraries(cost_learner
   ${PROJECT_NAME}
 )
+
+# unit tests are enabled for roslaunch files
+if (CATKIN_ENABLE_TESTING)
+  find_package(roslaunch REQUIRED)
+  roslaunch_add_file_check(launch)
+endif (CATKIN_ENABLE_TESTING)
