@@ -149,8 +149,6 @@ open(X,I+1) :- opendoor(X,I), -open(X,I), I<n, beside(X,I).
 %cost(1,I) :- greet(X,I), I<n.
 %cost(1,I) :- opendoor(X,I), I<n.
 
-
-
 %#minimize[cost(X,Y)=X@2].
 
 #hide.

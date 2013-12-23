@@ -10,6 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
 )
 find_package(Boost REQUIRED)
 
+catkin_python_setup()
+
 add_service_files(
   FILES
   CostLearnerInterface.srv
@@ -35,6 +37,7 @@ catkin_package(
     ${PROJECT_NAME}
     ${Boost_LIBRARIES}
 )
+
 
 include_directories(
   include
