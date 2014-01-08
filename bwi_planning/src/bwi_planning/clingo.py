@@ -48,7 +48,8 @@ class ClingoWrapper(object):
         self.clingo_timeout = rospy.get_param("~clingo_timeout", 60)
         self.clingo_steps = rospy.get_param("~clingo_steps", 20)
         self.clingo_threads = rospy.get_param("~clingo_threads", 6)
-        self.domain_file = rospy.get_param("~domain_file")
+        self.domain_semantics_file = rospy.get_param("~domain_semantics_file")
+        self.rigid_knowledge_file = rospy.get_param("~rigid_knowledge_file")
 
     def get_plan(self, additional_files):
 
@@ -57,7 +58,8 @@ class ClingoWrapper(object):
             additional_files_str = " ".join(additional_files)
             out_file = open("result", "w")
             clingo_command = ClingoCommand("gringo -c n=" + str(n) +
-                                     " " + self.domain_file + 
+                                     " " + self.domain_semantics_file + 
+                                     " " + self.rigid_knowledge_file + 
                                      " " + additional_files_str + 
                                      " | rosrun clasp clasp -t " + 
                                      str(self.clingo_threads), out_file)
@@ -98,7 +100,7 @@ class ClingoWrapper(object):
         additional_files_str = " ".join(additional_files)
         out_file = open("result", "w")
         clingo_command = ClingoCommand("gringo -c n=" + str(self.clingo_steps) +
-                                 " " + self.domain_file + 
+                                 " " + self.domain_semantics_file + 
                                  " " + additional_files_str + 
                                  " | rosrun clasp clasp -t " + 
                                  str(self.clingo_threads), out_file)

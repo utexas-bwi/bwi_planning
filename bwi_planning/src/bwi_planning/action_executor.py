@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import rospy
+import time
 
 from bwi_planning_common.srv import PlannerInterface
 from bwi_planning_common.msg import PlannerAtom
@@ -15,6 +16,8 @@ class ActionExecutor(object):
     def __init__(self, dry_run=False, initial_file=None):
 
         self.dry_run = dry_run
+        rospy.loginfo("This is a dry run. The next state will be used to " +
+                      "generate observations.")
         self.auto_open_door = rospy.get_param("~auto_open_door", False)
         self.initial_file = initial_file
 
@@ -58,7 +61,8 @@ class ActionExecutor(object):
 
         rospy.loginfo("Executing action: " + str(action))
 
-        if self.dry_run and action.name != "askploc":
+        if self.dry_run and action.name != "askploc" and action.name != "greet":
+            time.sleep(1)
             rospy.loginfo("  Observations: " + str(next_state))
             return next_state
 

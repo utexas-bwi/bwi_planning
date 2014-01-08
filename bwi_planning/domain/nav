@@ -29,7 +29,7 @@ facing(X,I+1) :- facing(X,I), not -facing(X,I+1), I<n.
 :- facing(X1,I), facing(X2,I), X1!=X2, I<=n.
 -facing(X2,I) :- facing(X1,I), door(X2), X1!=X2, I<=n.
 
-beside(X,I) :- facing(X,I)
+beside(X,I) :- facing(X,I).
 beside(X,I+1) :- beside(X,I), not -beside(X,I+1), I<n.
 -beside(X,I+1) :- -beside(X,I), not beside(X,I+1), I<n.
 :- beside(X1,I), beside(X2,I), X1!=X2, I<=n.

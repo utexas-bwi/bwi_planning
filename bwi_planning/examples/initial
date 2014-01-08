@@ -1,0 +1,11 @@
+at(lab1,0).
+-beside(d1,0).
+-beside(d2,0).
+-beside(d3,0).
+-beside(d4,0).
+-beside(d5,0).
+-facing(d1,0).
+-facing(d2,0).
+-facing(d3,0).
+-facing(d4,0).
+-facing(d5,0).
