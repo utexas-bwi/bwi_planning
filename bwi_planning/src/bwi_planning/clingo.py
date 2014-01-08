@@ -16,6 +16,31 @@ def parse_plan(plan_string):
     states = sorted(states, key=lambda atom: atom.time)
     return plan,states
 
+def correct_execution_order(plan, states):
+    """
+      When clingo_steps is greater than the actual plan length, there are
+      gaps in the plan. This function adjusts the plans and the states to
+      remove these gaps
+    """
+    print plan
+    print states
+    current_time_index = 0
+    for action in  plan:
+        if action.time != current_time_index:
+            new_states = [atom for atom in states 
+                          if atom.time <= current_time_index]
+
+            for atom in states:
+                if atom.time == action.time + 1:
+                    atom.time = current_time_index + 1
+                    new_states.append(atom)
+            new_states.extend([atom for atom in states
+                               if atom.time > action.time + 1])
+            states = new_states
+            action.time = current_time_index
+        current_time_index += 1
+    states = sorted(states, key=lambda atom: atom.time)
+
 class ClingoCommand(object):
 
     def __init__(self, cmd, outfile):
@@ -24,7 +49,7 @@ class ClingoCommand(object):
         self.outfile = outfile
 
     def run(self, timeout):
-        rospy.logdebug("Running command: " + self.cmd)
+        rospy.loginfo("Running command: " + self.cmd)
         def target():
             self.process = subprocess.Popen(self.cmd, shell=True, 
                                             stdout=self.outfile, 
@@ -38,7 +63,7 @@ class ClingoCommand(object):
         if thread.is_alive():
             os.killpg(self.process.pid, signal.SIGTERM)
             thread.join()
-        #print "Process RetCode: " + str(self.process.returncode)
+        print "Process RetCode: " + str(self.process.returncode)
         self.outfile.close()
         return self.process.returncode
 
@@ -63,7 +88,13 @@ class ClingoWrapper(object):
                                      " " + additional_files_str + 
                                      " | rosrun clasp clasp -t " + 
                                      str(self.clingo_threads), out_file)
-            clingo_command.run(self.clingo_timeout)
+            ret_code = clingo_command.run(self.clingo_timeout)
+
+            if (ret_code != 0 and 
+               ret_code != 130 and # termination by ctrl+c is ok
+               ret_code != 30): # not even sure what this is
+                rospy.logerr("Clasp encountered error")
+                return False, 0, None, None
 
             # Parse Output
             out_file = open("result","r")
@@ -101,12 +132,15 @@ class ClingoWrapper(object):
         out_file = open("result", "w")
         clingo_command = ClingoCommand("gringo -c n=" + str(self.clingo_steps) +
                                  " " + self.domain_semantics_file + 
+                                 " " + self.rigid_knowledge_file + 
                                  " " + additional_files_str + 
                                  " | rosrun clasp clasp -t " + 
                                  str(self.clingo_threads), out_file)
         ret_code = clingo_command.run(self.clingo_timeout)
 
-        if ret_code != 0:
+        if (ret_code != 0 and 
+           ret_code != 130 and # termination by ctrl+c is ok
+           ret_code != 30): # not even sure what this is
             rospy.logerr("Clasp encountered error")
             return False, 0, None, None
 
@@ -126,6 +160,7 @@ class ClingoWrapper(object):
 
         try:
             plan, states = parse_plan(plan_line)
+            #correct_execution_order(plan, states)
         except ValueError as e:
             rospy.logerr("Received plan from clasp, but unable to parse plan:" +
                          plan_line)

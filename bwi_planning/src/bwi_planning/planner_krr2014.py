@@ -15,7 +15,7 @@ class PlannerKRR2014(object):
         self.clingo_interface = ClingoWrapper()
         self.initial_file = rospy.get_param("~initial_file")
         self.query_file = rospy.get_param("~query_file")
-        self.domain_cost_file = rospy.get_param("~domain_cost_file", None)
+        self.domain_costs_file = rospy.get_param("~domain_costs_file", None)
         self.costs_file = rospy.get_param("~costs_file", None)
         self.enable_learning = rospy.get_param("~enable_learning", False)
         self.executor = ActionExecutor(self.dry_run, self.initial_file)
@@ -71,12 +71,13 @@ class PlannerKRR2014(object):
     def start(self):
         self.executor.sense_initial_state()
         while True:
-            if self.domain_cost_file != None:
+            if self.domain_costs_file != None:
+                rospy.loginfo("Planning with cost optimization!!")
                 plan_available, optimization, plan, states = \
                         self.clingo_interface.get_plan_costs([self.initial_file,
                                                       self.query_file,
-                                                      self.domain_cost_file,
-                                                      self.costs_file])
+                                                      self.costs_file,
+                                                      self.domain_costs_file])
             else:
                 plan_available, optimization, plan, states = \
                         self.clingo_interface.get_plan([self.initial_file,
@@ -97,6 +98,7 @@ class PlannerKRR2014(object):
                 # TODO record time here and add sample
                 observations = \
                         self.executor.execute_action(action, next_state, step+1) 
+                rospy.loginfo("  Expected State: " + str(next_state))
                 for observation in observations:
                     if observation not in next_state:
                         rospy.logwarn("  Unexpected observation: " + 
