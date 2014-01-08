@@ -1,0 +1,21 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% rigid knowledge
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+room(cor).
+office(o1;;o2;;o3;;lab1).
+room(X) :- office(X).
+door(d1;;d2;;d3;;d4;;d5).
+hasdoor(o1,d1;;o2,d2;;o3,d3;;lab1,d4;;lab1,d5).
+faculty(alice;;bob).
+secretary(carol).
+in_office(alice,o1;;bob,o2;;carol,o3).
+knows(carol, ploc(X)) :- faculty(X).
+person(X) :- faculty(X).
+person(X) :- secretary(X).
+
+% accessibility rules
+acc(X,Y,cor) :- room(X), door(Y), hasdoor(X,Y).
+acc(Z,Y,X) :- acc(X,Y,Z).
+indacc(X,Y,Z) :- acc(X,Y,Z).
+indacc(X,Y,Z) :- acc(X,Y,Z1), indacc(Z1,Y1,Z).

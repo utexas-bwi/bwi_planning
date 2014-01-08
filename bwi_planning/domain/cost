@@ -1,0 +1,13 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% cost optimization
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+cost(1,I) :- askploc(X,I), I<n.
+cost(5,I) :- gothrough(X,I), I<n.
+cost(1,I) :- greet(X,I), I<n.
+cost(1,I) :- opendoor(X,I), I<n.
+
+cost(@dis(X,Y,Z),I) :- approach(X,I), beside(Y,I), door(X), door(Y), I<n, at(Z,I).
+cost(10,I) :- approach(X,I), {beside(Y,I)}0.
+
+#minimize[cost(X,Y)=X@1].

@@ -1,106 +1,62 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% grounding
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 step(0..n).
 astep(1..n).
 #domain step(I).
 #domain step(V_step).
 #domain astep(V_astep).
 
-%floor plan of GDC north wing
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% time dependent external knowledge
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% faculty offices
+inside(X,Y,0) :- in_office(X,Y), not -inside(X,Y,0).
+-inside(X,Y,I) :- inside(X,Y1,I), Y1!=Y, room(Y).
+inside(X,Y,I+1) :- inside(X,Y,I), not -inside(X,Y,I+1), I<n.
+-inside(X,Y,I+1) :- -inside(X,Y,I), not inside(X,Y,I+1), I<n.
 
-% office(o1;;o2;;o3;;lab1).
-% door(d1;;d2;;d3;;d4;;d5).
-% hasdoor(o1,d1;;o2,d2;;o3,d3;;lab1,d4;;lab1,d5).
-
-office(o3_508;;o3_510;;o3_512;;o3_416;;l3_414a;;s3_516;;l3_436;;o3_428;;o3_426;;l3_414b;;l3_414;;o3_402;;o3_412;;o3_502;;o3_404;;o3_418;;o3_420;;o3_422;;o3_430;;o3_432).
-door(d3_508;;d3_510;;d3_512;;d3_416;;d3_414a1;;d3_414a2;;d3_414a3;;d3_5161;;d3_5162;;d3_4361;;d3_4362;;d3_428;;d3_426;;d3_414b1;;d3_414b2;;d3_414b3;;d3_402;;d3_412;;d3_502;;d3_404;;d3_418;;d3_420;;d3_422;;d3_430;;d3_432).
-
-hasdoor(o3_508,d3_508;;o3_510,d3_510;;o3_512,d3_512;;o3_416,d3_416;;l3_414a,d3_414a1;;l3_414a,d3_414a2;;l3_414a,d3_414a3;;s3_516,d3_5161;;s3_516,d3_5162;;l3_436,d3_4361;;l3_436,d3_4362;;o3_426,d3_426;;o3_428,d3_428;;l3_414b,d3_414b1;;l3_414b,d3_414b2;;l3_414b,d3_414b3;;o3_402,d3_402;;o3_412,d3_412;;o3_502,d3_502;;o3_404,d3_404;;o3_418,d3_418;;o3_420,d3_420;;o3_422,d3_422;;o3_430,d3_430;;o3_432,d3_432).
-
-% corridor
-corridor(cor).
-room(X) :- office(X).
-room(cor).
-
-% accessibility
-
-% acc(X,Y,cor) :- room(X), door(Y), hasdoor(X,Y).
-acc(X,Y,cor) :- room(X), door(Y), hasdoor(X,Y), Y!=d3_414a3, Y!=d3_414b3.
-acc(l3_414a,d3_414a3,l3_414).
-acc(l3_414b,d3_414b3,l3_414).
-
-indacc(X,Y,Z) :- acc(X,Y,Z).
-indacc(X,Y,Z) :- acc(X,Y,Z1), indacc(Z1,Y1,Z).
-
-% room assignment
-
-% faculty members
-% inside(alice,o1,I) :- I<=n.
-% inside(bob,o2,I) :- I<=n.
-% inside(carol,o3,I) :- I<=n.
-
-inside(alice,o3_508,I) :- I<=n.
-inside(bob,o3_510,I) :- I<=n.
-inside(carol,o3_502,I) :- I<=n.
-
-faculty(alice;;bob).
-secretary(carol).
-
-% faculty(dan).
-
-person(X) :- faculty(X).
-person(X) :- secretary(X).
-
-% knowledge of people's location
-
-knows(carol, ploc(X)) :- faculty(X).
-
-% static laws
-
-acc(Z,Y,X) :- acc(X,Y,Z).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% time dependent internal knowledge
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % inertial fluent and uniquness/existence constraints
 % a door automatically closes
 -open(X,I) :- not open(X,I), door(X).
-
-inside(X,Y,I+1) :- inside(X,Y,I), not -inside(X,Y,I+1), I<n.
--inside(X,Y,I+1) :- -inside(X,Y,I), not inside(X,Y,I+1), I<n.
--inside(X,Y,I) :- inside(X,Y1,I), Y1!=Y, room(Y).
-
-beside(X,I+1) :- beside(X,I), not -beside(X,I+1), I<n.
--beside(X,I+1) :- -beside(X,I), not beside(X,I+1), I<n.
-:- beside(X1,I), beside(X2,I), X1!=X2, I<=n.
--beside(X2,I) :- beside(X1,I), door(X2), X1!=X2, I<=n.
 
 facing(X,I+1) :- facing(X,I), not -facing(X,I+1), I<n.
 -facing(X,I+1) :- -facing(X,I), not facing(X,I+1), I<n.
 :- facing(X1,I), facing(X2,I), X1!=X2, I<=n.
 -facing(X2,I) :- facing(X1,I), door(X2), X1!=X2, I<=n.
 
+beside(X,I) :- facing(X,I)
+beside(X,I+1) :- beside(X,I), not -beside(X,I+1), I<n.
+-beside(X,I+1) :- -beside(X,I), not beside(X,I+1), I<n.
+:- beside(X1,I), beside(X2,I), X1!=X2, I<=n.
+-beside(X2,I) :- beside(X1,I), door(X2), X1!=X2, I<=n.
+
 {at(X,I+1)} :- at(X,I), room(X), I<n.
 :- not 1{at(X,I):room(X)}1.
 
 -visiting(X,I) :- not visiting(X,I), person(X), I<=n.
 
-% actions changes fluents
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% action knowledge
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % approach changes the value of beside
 
-beside(X,I+1) :- approach(X,I), door(X), I<n.
-facing(X,I+1) :- approach(X,I), door(X), I<n.
 :- approach(Y,I), at(X,I), {door(Y):acc(X,Y,Z)}0, I<n.
 :- approach(X,I), facing(X,I), I<n.
-:- approach(X,I), not -facing(X,I), I<n.
+facing(X,I+1) :- approach(X,I), door(X), I<n.
 
 % gothrough changes the value of at
 
-at(Z,I+1) :- gothrough(Y,I), at(X,I), acc(X,Y,Z), I<n.
--facing(Y,I+1):- gothrough(Y,I), door(Y), I<n.
 :- gothrough(Y,I), at(X,I), {door(Y):acc(X,Y,Z)}0.
 :- gothrough(Y,I), not open(Y,I), I<n.
 :- gothrough(Y,I), not facing(Y,I), I<n.
-
+at(Z,I+1) :- gothrough(Y,I), at(X,I), acc(X,Y,Z), I<n.
+-facing(Y,I+1):- gothrough(Y,I), door(Y), I<n.
 
 % greet changes the value of visited and beside
 
@@ -110,9 +66,21 @@ visiting(X,I+1) :- greet(X,I), I<n.
 
 % call for open action changes the value of open
 
+:- opendoor(X,I), not facing(X,I), I<n.
+:- opendoor(X,I), open(X,I), I<n.
 open(X,I+1) :- opendoor(X,I), -open(X,I), I<n, beside(X,I).
 
-%nonconcurrency
+% sensing action
+
+:- askploc(X,I), {visiting(Y,I):person(Y)}0, I<n.
+:- askploc(X,I), visiting(Y,I), not knows(Y,ploc(X)), I<n.
+:- askploc(X,I), inside(X,Y,I), I<n.
+1{inside(X,Y,I+1):room(Y)}1:-askploc(X,I), I<n.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% nonconcurrency
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 :- opendoor(X,I), opendoor(Y,I), X!=Y, I<n.
 :- greet(X,I), opendoor(Y,I), I<n.
 :- greet(X,I), greet(Y,I), X!=Y, I<n.
@@ -122,39 +90,29 @@ open(X,I+1) :- opendoor(X,I), -open(X,I), I<n, beside(X,I).
 :- approach(X,I), gothrough(Y,I), I<n.
 :- gothrough(X,I), greet(Y,I), I<n.
 
-% sensing action
-
-1{inside(X,Y,I+1):room(Y)}1:-askploc(X,I), I<n.
-
 :- askploc(X,I), askploc(Y,I), X!=Y, I<n.
 :- askploc(X,I), greet(Y,I), I<n.
 :- askploc(X,I), opendoor(Y,I), I<n.
 :- askploc(X,I), gothrough(Y,I), I<n.
 :- askploc(X,I), approach(Y,I), I<n.
 
-:- askploc(X,I), {visiting(Y,I):person(Y)}0, I<n.
-:- askploc(X,I), visiting(Y,I), not knows(Y,ploc(X)), I<n.
-:- askploc(X,I), inside(X,Y,I), I<n.
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % standard choice rules
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 {askploc(X,I)} :- person(X), I<n.
 {gothrough(X,I)} :- door(X), I<n.
 {greet(X,I)} :- person(X), I<n.
 {opendoor(X,I)} :- door(X), I<n.
 {approach(X,I)} :- door(X), I<n.
 
-% optimization
-
-%cost(@dis(X,Y,Z),I) :- approach(X,I), beside(Y,I), door(X), door(Y), I<n, at(Z,I).
-%cost(10,I) :- approach(X,I), {beside(Y,I)}0.
-%cost(1,I) :- askploc(X,I), I<n.
-%cost(5,I) :- gothrough(X,I), I<n.
-%cost(1,I) :- greet(X,I), I<n.
-%cost(1,I) :- opendoor(X,I), I<n.
-
-%#minimize[cost(X,Y)=X@2].
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% output (required for parsing in the python script)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 #hide.
+
+% fluents
 #show at/2.
 #show beside/2.
 #show -beside/2.
@@ -167,11 +125,12 @@ open(X,I+1) :- opendoor(X,I), -open(X,I), I<n, beside(X,I).
 #show inside/3.
 #show -inside/3.
 
+% actions
 #show opendoor/2.
 #show approach/2.
 #show askploc/2.
 #show gothrough/2.
 #show greet/2.
 
+% goals
 #show goal/2.
-
