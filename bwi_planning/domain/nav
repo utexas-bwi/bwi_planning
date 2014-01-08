@@ -1,5 +1,8 @@
 step(0..n).
+astep(1..n).
 #domain step(I).
+#domain step(V_step).
+#domain astep(V_astep).
 
 %floor plan of GDC north wing
 
@@ -155,21 +158,20 @@ open(X,I+1) :- opendoor(X,I), -open(X,I), I<n, beside(X,I).
 #show at/2.
 #show beside/2.
 #show -beside/2.
-#show gothrough/2.
-#show greet/2.
 #show open/2.
 #show -open/2.
 #show visiting/2.
 #show -visiting/2.
-#show opendoor/2.
-#show approach/2.
-#show askploc/2.
-#show fluent/1.
-#show action/1.
 #show facing/2.
 #show -facing/2.
 #show inside/3.
 #show -inside/3.
+
+#show opendoor/2.
+#show approach/2.
+#show askploc/2.
+#show gothrough/2.
+#show greet/2.
 
 #show goal/2.
 
