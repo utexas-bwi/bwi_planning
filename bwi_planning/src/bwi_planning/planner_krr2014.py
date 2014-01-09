@@ -3,11 +3,23 @@
 import rospy
 import shutil
 
-from bwi_planning.srv import CostLearnerInterface
+from bwi_planning.srv import CostLearnerInterface, CostLearnerInterfaceRequest
 from std_srvs.srv import Empty
 
 from .action_executor import ActionExecutor
 from .clingo import ClingoWrapper
+
+def get_adjacent_door(atoms):
+    for atom in atoms:
+        if atom.name == "beside" and not atom.negated:
+            return str(atom.value)
+    return None
+
+def get_location(atoms):
+    for atom in atoms:
+        if atom.name == "at":
+            return str(atom.value)
+    return None
 
 class PlannerKRR2014(object):
 
@@ -36,10 +48,10 @@ class PlannerKRR2014(object):
         self.executor = ActionExecutor(self.dry_run, self.initial_file)
 
         if self.enable_learning: 
-            rospy.wait_for_service('cost_learner/finalize_episode')
+            rospy.wait_for_service('cost_learner/increment_episode')
             rospy.wait_for_service('cost_learner/add_sample')
             self.finalize_episode = \
-                    rospy.ServiceProxy('cost_learner/finalize_episode', Empty)
+                    rospy.ServiceProxy('cost_learner/increment_episode', Empty)
             self.add_sample = \
                     rospy.ServiceProxy('cost_learner/add_sample', 
                                        CostLearnerInterface)
@@ -119,10 +131,25 @@ class PlannerKRR2014(object):
                                  if state.time == action.time]
                 next_state = [state for state in states
                               if state.time == action.time+1]
-                # TODO record time here and add sample
-                observations = \
+                start_time = rospy.get_time()
+                success, observations = \
                         self.executor.execute_action(action, next_state, 
                                                      action.time+1) 
+                duration = rospy.get_time() - start_time
+                if self.enable_learning and action.name == "approach":
+                    if success:
+                        # Check to see if we were beside some door in start
+                        # state and the location
+                        req = CostLearnerInterfaceRequest()
+                        req.location = get_location(current_state)
+                        req.door_from = get_adjacent_door(current_state)
+                        if req.door_from:
+                            req.door_to = str(action.value)
+                            req.cost = duration
+                            self.add_sample(req)
+                    else:
+                        rospy.loginfo("Executed unsuccessful approach action.")
+
                 for observation in observations:
                     if observation not in next_state:
                         rospy.logwarn("  Unexpected observation: " + 

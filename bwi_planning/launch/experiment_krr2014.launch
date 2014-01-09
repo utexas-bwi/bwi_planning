@@ -1,0 +1,15 @@
+<launch>
+
+  <arg name="costs_file" default="/tmp/distances.lua" />
+
+  <!-- launch the gui -->
+  <node name="segbot_gui" pkg="segbot_gui" type="question_dialog_plugin" />
+
+  <!-- launch the planner -->
+  <include file="$(find bwi_planning)/launch/planner_krr2014.launch">
+    <arg name="use_cost_optimization" value="true" />
+    <arg name="costs_file" value="$(arg costs_file)" />
+    <arg name="enable_learning" value="true" />
+  </include>
+
+</launch>

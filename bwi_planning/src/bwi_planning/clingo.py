@@ -46,7 +46,7 @@ class ClingoWrapper(object):
 
     def __init__(self):
         self.clingo_timeout = rospy.get_param("~clingo_timeout", 60)
-        self.clingo_steps = rospy.get_param("~clingo_steps", 20)
+        self.clingo_steps = rospy.get_param("~clingo_steps", 15)
         self.clingo_threads = rospy.get_param("~clingo_threads", 6)
         self.domain_semantics_file = rospy.get_param("~domain_semantics_file")
         self.rigid_knowledge_file = rospy.get_param("~rigid_knowledge_file")
@@ -65,14 +65,6 @@ class ClingoWrapper(object):
                                      str(self.clingo_threads), out_file)
             ret_code = clingo_command.run(self.clingo_timeout)
 
-            if (ret_code != 0 and 
-               ret_code != 130 and # termination by ctrl+c is ok
-               ret_code != 30 and # not even sure what this is
-               ret_code != 20 and # when plan is not found
-               ret_code != 10): # when optimal plan is found
-                rospy.logerr("Clasp encountered error")
-                return False, 0, None, None
-
             # Parse Output
             out_file = open("result","r")
             linelist = []
@@ -80,13 +72,13 @@ class ClingoWrapper(object):
             for line in out_file:
                 linelist.append(line)
                 if line[:13] == "UNSATISFIABLE":
-                    out_file.close()
                     no_plan_available = True
                     break
                 if line[:11] == "SATISFIABLE":
                     optimization = n
                     plan_line = linelist[-2]
 
+            out_file.close()
             if no_plan_available:
                 continue
 
@@ -98,7 +90,6 @@ class ClingoWrapper(object):
                 rospy.logerr("  Error: " + str(e))
                 return False, 0, None, None
 
-            out_file.close()
             return True, optimization, plan, states
         return False, 0, None, None
 
@@ -117,27 +108,24 @@ class ClingoWrapper(object):
         ret_code = clingo_command.run(self.clingo_timeout)
         rospy.loginfo("Clingo output written to " + result_file_str) 
 
-        if (ret_code != 0 and 
-           ret_code != 130 and # termination by ctrl+c is ok
-           ret_code != 30 and # not even sure what this is
-           ret_code != 20 and # when plan is not found
-           ret_code != 10): # when optimal plan is not found
-            rospy.logerr("Clasp encountered error")
-            return False, 0, None, None
-
         # Parse Output
-        out_file = open(result_file_str,"r")
-        if out_file.readline() == "UNSATISFIABLE\n":
-            out_file.close()
-            return False, 0, None, None
-
         linelist = []
+        plan_line = None
+        out_file = open(result_file_str,"r")
         for line in out_file:
             linelist.append(line)
+            if line == "UNSATISFIABLE\n":
+                out_file.close()
+                return False, 0, None, None
             if line[:13] == "Optimization:" and linelist[-2][:9] != "  Optimum":
                 optimization_line = linelist[-1]
                 optimization = int(optimization_line.split(' ')[1])
                 plan_line = linelist[-2]
+
+        if not plan_line:
+            rospy.loginfo("Unable to parse clasp output. Check " + 
+                          result_file_str) 
+            return False, 0, None, None
 
         try:
             plan, states = parse_plan(plan_line)

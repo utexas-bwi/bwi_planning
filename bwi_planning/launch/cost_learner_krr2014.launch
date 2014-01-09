@@ -1,0 +1,16 @@
+<launch>
+
+  <arg name="dir_path" default="$(find bwi_planning)/config/simulation" />
+  <arg name="door_file" default="$(arg dir_path)/doors.yaml" />
+  <arg name="costs_file" default="/tmp/distances.lua" />
+  <arg name="values_file" default="/tmp/values" />
+
+  <!-- launch the cost learner -->
+  <node name="cost_learner" pkg="bwi_planning" type="cost_learner"
+    output="screen">
+    <param name="door_file" value="$(arg door_file)" />
+    <param name="lua_file" value="$(arg costs_file)" />
+    <param name="values_file" value="$(arg values_file)" />
+  </node>
+ 
+</launch>

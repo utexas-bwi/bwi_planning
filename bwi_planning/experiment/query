@@ -2,13 +2,13 @@
 % Heuristics 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% Do not approach a door if that door is the only door connecting the adjacent 
+% room to the goal of visiting alice.
+:- approach(Y,I), at(X,I), acc(X,Y,Z), 1{indacc(Z,Y1,W)}1,inside(alice,W,I), Z!=W.
+
 % This heuristic says that only approach a door if you plan to go through it
 :- v_approach(D,V_astep-1), not opendoor(D,V_astep).
 :- v_opendoor(D,V_astep-1), not gothrough(D,V_astep).
-
-% This heuristic says that once you go through a door, do not approach it
-% immediately without performing some other action
-:- v_gothrough(D,V_astep-1), approach(D,V_astep).
 
 % Some supplementary definitions required by the heuristics
 -noop(V_step) :- approach(D,V_step).

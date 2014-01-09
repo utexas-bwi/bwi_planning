@@ -15,7 +15,7 @@
   <arg name="enable_learning" default="false" />
 
   <node name="planner_krr2014" type="planner_krr2014" pkg="bwi_planning"
-    output="screen">
+    output="screen" required="true">
 
     <param if="$(arg dry_run)" name="initial_file" value="$(arg initial_file)" />
 

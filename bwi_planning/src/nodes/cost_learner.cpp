@@ -24,14 +24,14 @@ bool addSample(bwi_planning::CostLearnerInterface::Request &req,
 int main(int argc, char **argv) {
 
   ros::init(argc, argv, "cost_learner");
-  ros::NodeHandle n;
+  ros::NodeHandle n, private_nh("~");
 
   learner_.reset(new bwi_planning::CostLearner);
 
-  ros::ServiceServer episode_service = n.advertiseService("~increment_episode", 
-      incrementEpisode);
-  ros::ServiceServer sample_service = n.advertiseService("~add_sample", 
-      addSample);
+  ros::ServiceServer episode_service = 
+    private_nh.advertiseService("increment_episode", incrementEpisode);
+  ros::ServiceServer sample_service = 
+    private_nh.advertiseService("add_sample", addSample);
   ros::spin();
 
   return 0;

@@ -68,11 +68,17 @@ class ActionExecutor(object):
         if self.dry_run and action.name != "askploc" and action.name != "greet":
             time.sleep(1)
             rospy.loginfo("  Observations: " + str(next_state))
-            return next_state
+            return True, next_state
 
+        success = False
         if (action.name == "approach" or action.name == "gothrough"):
             response = self.nav_executor(PlannerAtom(action.name, 
                                                      [str(action.value)]))
+            if self.auto_open_door:
+                # close the door now that it was automatically opened
+                self.update_doors(str(action.value), False, False)
+                
+            success = response.success 
             result = response.observations
 
         # opendoor, askploc, greet
@@ -84,11 +90,11 @@ class ActionExecutor(object):
                          "Can you open door " + str(action.value) + "?",
                          [], 0.0)
             rate = WallRate(0.5)
+            door_opened = False
             for i in range(60):
                 response = self.nav_executor(PlannerAtom("sensedoor", 
                                               [str(action.value)]))
                 result = response.observations
-                door_opened = False
                 for fluent in result:
                     if (fluent.name == "open" and 
                         fluent.value[0] == str(action.value)):
@@ -99,8 +105,9 @@ class ActionExecutor(object):
                         break
                 if door_opened:
                     break
-
                 rate.sleep()
+            if door_opened:
+                success = True
 
         if action.name == "askploc":
             response = self.gui(QuestionDialogRequest.TEXT_QUESTION, 
@@ -110,6 +117,7 @@ class ActionExecutor(object):
             if response.index == QuestionDialogRequest.TEXT_RESPONSE:
                 result = [PlannerAtom("inside",
                                       [str(action.value), response.text])] 
+                success = True
             else:
                 # The request timed out, so send back no observations
                 result = []
@@ -118,13 +126,15 @@ class ActionExecutor(object):
             self.gui(QuestionDialogRequest.DISPLAY,
                      "Hello " + str(action.value) + "!!",
                      [], 0.0)
+            time.sleep(5.0)
             result =  [PlannerAtom("visiting",[str(action.value)])]
+            success = True
 
         observations = []
         for fluent in result:
             observations.append(Atom(fluent.name, 
                                      ",".join(fluent.value),time=next_step))
         rospy.loginfo("  Observations: " + str(observations))
-        return observations
+        return success, observations
 
 

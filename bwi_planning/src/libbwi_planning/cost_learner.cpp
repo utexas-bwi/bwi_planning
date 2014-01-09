@@ -23,7 +23,7 @@ namespace bwi_planning {
       unavailable_parameters.push_back("values_file");
     }
     if (!(private_nh.getParam("lua_file", lua_file_))) {
-      unavailable_parameters.push_back("door_file");
+      unavailable_parameters.push_back("lua_file");
     }
     private_nh.param("alpha", alpha_, 0.5);
     private_nh.param("use_exponential_weighting", 
