@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import rospy
+import shutil
 
 from bwi_planning.srv import CostLearnerInterface
 from std_srvs.srv import Empty
@@ -11,13 +12,27 @@ from .clingo import ClingoWrapper
 class PlannerKRR2014(object):
 
     def __init__(self):
+        self.initialized = False
+
+
         self.dry_run = rospy.get_param("~dry_run", False)
         self.clingo_interface = ClingoWrapper()
-        self.initial_file = rospy.get_param("~initial_file")
+        initial_file = rospy.get_param("~initial_file", None)
         self.query_file = rospy.get_param("~query_file")
         self.domain_costs_file = rospy.get_param("~domain_costs_file", None)
         self.costs_file = rospy.get_param("~costs_file", None)
         self.enable_learning = rospy.get_param("~enable_learning", False)
+
+        if self.dry_run and not initial_file:
+            rospy.logfatal("Dry run requested, but no initial state provided." +
+                           " Please set the ~initial_file param.")
+            return
+        self.initial_file = "/tmp/initial"
+        if self.dry_run:
+            rospy.loginfo("Supplied initial state written to: " + 
+                          self.initial_file)
+            shutil.copyfile(initial_file, self.initial_file)
+
         self.executor = ActionExecutor(self.dry_run, self.initial_file)
 
         if self.enable_learning: 
@@ -29,9 +44,15 @@ class PlannerKRR2014(object):
                     rospy.ServiceProxy('cost_learner/add_sample', 
                                        CostLearnerInterface)
 
-    def construct_initial_state(self, previous_state, observations):
-        # Change time to 0 in previous state and
-        # replace all conflicts with observations
+        self.initialized = True
+
+    def _construct_initial_state(self, previous_state, observations):
+        """
+          This is a poor man's belief merge function between the previous_state
+          and observations. This needs to be replaced with proper belief merge
+          algorithms as it impossible to cover every possible situation here
+          using if/else statements
+        """
 
         new_state = []
         removed_atoms = []
@@ -63,12 +84,16 @@ class PlannerKRR2014(object):
             display_message += str(atom) + " "
         initial_file.close()
         rospy.loginfo(display_message)
+        rospy.loginfo("Constructed initial state written to: " + 
+                      self.initial_file)
 
-    def send_finish(self):
+    def _send_finish(self):
         if self.enable_learning:
             self.finalize_episode()
 
     def start(self):
+        if not self.initialized:
+            return
         self.executor.sense_initial_state()
         while True:
             if self.domain_costs_file != None:
@@ -88,17 +113,16 @@ class PlannerKRR2014(object):
             rospy.loginfo("Found plan (optimization = %i): %s"%(optimization,
                                                                 plan))
 
-            step = 0
             need_replan = False
             for action in plan:
                 current_state = [state for state in states
-                                 if state.time == step]
+                                 if state.time == action.time]
                 next_state = [state for state in states
-                              if state.time == step+1]
+                              if state.time == action.time+1]
                 # TODO record time here and add sample
                 observations = \
-                        self.executor.execute_action(action, next_state, step+1) 
-                rospy.loginfo("  Expected State: " + str(next_state))
+                        self.executor.execute_action(action, next_state, 
+                                                     action.time+1) 
                 for observation in observations:
                     if observation not in next_state:
                         rospy.logwarn("  Unexpected observation: " + 
@@ -107,14 +131,13 @@ class PlannerKRR2014(object):
                         break
                 if need_replan:
                     break
-                step += 1
 
             if need_replan:
-                self.construct_initial_state(current_state, observations)
+                self._construct_initial_state(current_state, observations)
                 continue
             
             rospy.loginfo("Plan successful!")
-            self.send_finish()
+            self._send_finish()
             break
 
 

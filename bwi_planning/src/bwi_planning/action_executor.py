@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import rospy
+import shutil
 import time
 
 from bwi_planning_common.srv import PlannerInterface
@@ -16,8 +17,9 @@ class ActionExecutor(object):
     def __init__(self, dry_run=False, initial_file=None):
 
         self.dry_run = dry_run
-        rospy.loginfo("This is a dry run. The next state will be used to " +
-                      "generate observations.")
+        if self.dry_run:
+            rospy.loginfo("This is a dry run. The expected next state will " +
+                          "be used to generate observations.")
         self.auto_open_door = rospy.get_param("~auto_open_door", False)
         self.initial_file = initial_file
 
@@ -56,6 +58,7 @@ class ActionExecutor(object):
             display_message += str(atom) + " "
         initial_file.close()
         rospy.loginfo(display_message)
+        rospy.loginfo("Sensed initial state stored in: " + self.initial_file)
 
     def execute_action(self, action, next_state, next_step):
 

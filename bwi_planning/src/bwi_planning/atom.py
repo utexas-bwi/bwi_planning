@@ -116,6 +116,10 @@ class Atom(object):
         raise ValueError("Malformed atom - Unknown action/fluent: %s"%str(name))
 
     def conflicts_with(self, other):
+        """
+          Detects only very basic conflicts with another atom. Tests for 
+          hard negation conflict and uniqueness constraints only.
+        """
 
         # Check for hard negation
         if self.name == other.name and \
