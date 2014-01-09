@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 import rospy
-import shutil
 import time
 
 from bwi_planning_common.srv import PlannerInterface
