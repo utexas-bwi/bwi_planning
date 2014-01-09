@@ -1,0 +1,9 @@
+<launch>
+
+  <!-- launch the simulation environment (also launches the gui) -->
+  <include file="$(find bwi_planning)/launch/environment_krr2014.launch" />
+
+  <!-- launch the planner -->
+  <include file="$(find bwi_planning)/launch/planner_krr2014.launch" />
+
+</launch>

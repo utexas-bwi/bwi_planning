@@ -92,8 +92,9 @@ class ActionExecutor(object):
                 for fluent in result:
                     if (fluent.name == "open" and 
                         fluent.value[0] == str(action.value)):
-                        self.gui(QuestionDialogRequest.DISPLAY,
-                                 "Thanks!!", [], 0.0)
+                        if not self.auto_open_door:
+                            self.gui(QuestionDialogRequest.DISPLAY,
+                                     "Thanks!!", [], 0.0)
                         door_opened = True
                         break
                 if door_opened:

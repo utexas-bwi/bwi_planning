@@ -29,6 +29,7 @@ v_gothrough(D,V_astep) :- v_gothrough(D,V_astep-1), noop(V_astep).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Goals 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-goal(0,I):- visiting(alice,I).
+faculty(dan).
+goal(0,I):- visiting(dan,I).
 goal(G,I+1) :- goal(G,I), I<n.
 :- not goal(0,n).
