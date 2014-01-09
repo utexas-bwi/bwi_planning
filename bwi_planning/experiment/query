@@ -1,11 +1,16 @@
-%:- approach(Y,I), at(X,I), acc(X,Y,Z), 1{indacc(Z,Y1,W)}1,inside(peterstone,W,I), Z!=W.
-%:- approach(Y,I), not opendoor(Y,I+1), I<n.
-%:- opendoor(Y,I), not gothrough(Y,I+1), I<n.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Heuristics 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% This heuristic says that only approach a door if you plan to go through it
 :- v_approach(D,V_astep-1), not opendoor(D,V_astep).
 :- v_opendoor(D,V_astep-1), not gothrough(D,V_astep).
+
+% This heuristic says that once you go through a door, do not approach it
+% immediately without performing some other action
 :- v_gothrough(D,V_astep-1), approach(D,V_astep).
 
+% Some supplementary definitions required by the heuristics
 -noop(V_step) :- approach(D,V_step).
 -noop(V_step) :- gothrough(D,V_step).
 -noop(V_step) :- opendoor(D,V_step).
@@ -21,6 +26,9 @@ v_opendoor(D,V_astep) :- v_opendoor(D,V_astep-1), noop(V_astep).
 v_gothrough(D,V_astep) :- gothrough(D,V_astep).
 v_gothrough(D,V_astep) :- v_gothrough(D,V_astep-1), noop(V_astep).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Goals 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 faculty(dan).
 goal(0,I):- visiting(dan,I).
 goal(G,I+1) :- goal(G,I), I<n.

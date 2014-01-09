@@ -1,22 +1,37 @@
 <launch>
 
-  <arg name="dir_path" default="$(find bwi_planning)/config/simulation" />
-  <arg name="map_file" default="$(find utexas_gdc)/maps/3ne.yaml" />
-  <arg name="location_file" default="$(arg dir_path)/locations.yaml" />
-  <arg name="door_file" default="$(arg dir_path)/doors.yaml" />
   <arg name="initial_file" default="$(find bwi_planning)/experiment/initial" />
-  <arg name="query_file" default="$(find bwi_planning)/experiment/query" />
+
+  <arg name="domain_costs_file" default="$(find bwi_planning)/domain/cost" />
   <arg name="domain_semantics_file" default="$(find bwi_planning)/domain/nav" />
+
+  <arg name="query_file" default="$(find bwi_planning)/experiment/query" />
+  <arg name="costs_file" default="$(find bwi_planning)/experiment/distances.lua" />
   <arg name="rigid_knowledge_file" default="$(find bwi_planning)/domain/experiment" />
 
-  <node name="planner_krr2014" type="planner_krr2014" pkg="bwi_planning">
-    <param name="map_file" value="$(arg map_file)" />
-    <param name="door_file" value="$(arg door_file)" />
-    <param name="location_file" value="$(arg location_file)" />
-    <param name="initial_file" value="$(arg initial_file)" />
+  <arg name="dry_run" default="false" />
+  <arg name="auto_open_door" default="true" />
+  <arg name="use_cost_optimization" default="false" />
+  <arg name="enable_learning" default="false" />
+
+  <node name="planner_krr2014" type="planner_krr2014" pkg="bwi_planning"
+    output="screen">
+
+    <param if="$(arg dry_run)" name="initial_file" value="$(arg initial_file)" />
+
+    <param if="$(arg use_cost_optimization)" 
+      name="costs_file" value="$(arg costs_file)" />
+    <param if="$(arg use_cost_optimization)" 
+      name="domain_costs_file" value="$(arg domain_costs_file)" />
+
     <param name="query_file" value="$(arg query_file)" />
     <param name="domain_semantics_file" value="$(arg domain_semantics_file)" />
     <param name="rigid_knowledge_file" value="$(arg rigid_knowledge_file)" />
-    <param name="auto_open_door" value="true" />
+
+    <param name="dry_run" value="$(arg dry_run)" />
+    <param name="auto_open_door" value="$(arg auto_open_door)" />
+    <param name="enable_learning" value="$(arg enable_learning)" />
+    
   </node>
+
 </launch>

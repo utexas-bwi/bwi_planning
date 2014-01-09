@@ -23,8 +23,10 @@ class ActionExecutor(object):
         self.initial_file = initial_file
 
         # segbot gui
+        rospy.loginfo("Waiting for GUI to come up...")
         rospy.wait_for_service('question_dialog')
         self.gui = rospy.ServiceProxy('question_dialog', QuestionDialog)
+        rospy.loginfo("  Found GUI")
 
         if not self.dry_run: 
 
@@ -104,7 +106,12 @@ class ActionExecutor(object):
                            "Can you tell me where " + str(action.value) + 
                                 " is?",
                            [], 30.0)
-            result = [PlannerAtom("inside",[str(action.value), response.text])] 
+            if response.index == QuestionDialogRequest.TEXT_RESPONSE:
+                result = [PlannerAtom("inside",
+                                      [str(action.value), response.text])] 
+            else:
+                # The request timed out, so send back no observations
+                result = []
 
         if action.name == "greet":
             self.gui(QuestionDialogRequest.DISPLAY,
