@@ -2,14 +2,29 @@
 
 import rospy
 import time
+import yaml
 
 from bwi_planning_common.srv import PlannerInterface
 from bwi_planning_common.msg import PlannerAtom
 from bwi_tools import WallRate
+from geometry_msgs.msg import PoseWithCovarianceStamped
 from segbot_gui.srv import QuestionDialog, QuestionDialogRequest
 from segbot_simulation_apps.srv import DoorHandlerInterface
 
 from .atom import Atom
+
+def point_in_polygon(point, polygon):
+    nvert = len(polygon)
+    c = False
+    j = nvert - 1
+    for i in range(nvert):
+        if (((polygon[i][1] >= point[1]) != (polygon[j][1] >= point[1])) and
+            (point[0] <= ((polygon[j][0] - polygon[i][0]) * 
+                          (point[1] - polygon[i][1]) / 
+                          (polygon[j][1] - polygon[i][1])) + polygon[i][0])):
+            c = not c
+        j = i
+    return c
 
 class ActionExecutor(object):
 
@@ -21,6 +36,17 @@ class ActionExecutor(object):
                           "be used to generate observations.")
         self.auto_open_door = rospy.get_param("~auto_open_door", False)
         self.initial_file = initial_file
+
+        # Atificially slow the robot down in the specified areas
+        self.artificial_delays = None
+        self.aritificial_delay_file = rospy.get_param("~artificial_delay_file", None)
+        if self.artificial_delay_file:
+            adf = open(self.artificial_delay_file)
+            self.artificial_delays = yaml.load(adf)
+            adf.close()
+            self.pose_subscriber = rospy.Subscriber("amcl_pose", 
+                                                    PoseWithCovarianceStamped, 
+                                                    self.pose_handler)
 
         # segbot gui
         rospy.loginfo("Waiting for GUI to come up...")
@@ -39,6 +65,21 @@ class ActionExecutor(object):
             if self.auto_open_door:
                 self.update_doors = rospy.ServiceProxy('update_doors', 
                                                  DoorHandlerInterface)
+
+    def pose_handler(self, msg):
+        self.position = msg.pose.pose.postion
+
+    def stop_robot
+
+    def delay_handler():
+        self.expect_delays = True
+        self.
+        while self.expect_delays:
+            for i,delay in self.artificial_delays:
+                if i in self.delays_encountered:
+                    continue
+                if point_in_polygon([self.position.x, self.position.y],
+                                    delay['location'])
 
     def sense_initial_state(self):
 
@@ -72,8 +113,20 @@ class ActionExecutor(object):
 
         success = False
         if (action.name == "approach" or action.name == "gothrough"):
-            response = self.nav_executor(PlannerAtom(action.name, 
-                                                     [str(action.value)]))
+
+            if self.artificial_delays:
+                self.delay_thread = threading.Thread(self.delay_handler())
+
+            while True:
+                response = self.nav_executor(PlannerAtom(action.name, 
+                                                         [str(action.value)]))
+                if response.success:
+                    break
+
+            if self.artificial_delays:
+                self.expect_delays = False
+                self.delay_thread.join()
+
             if self.auto_open_door:
                 # close the door now that it was automatically opened
                 self.update_doors(str(action.value), False, False)
