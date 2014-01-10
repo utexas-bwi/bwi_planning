@@ -1,0 +1,64 @@
+#! /usr/bin/env python
+
+import argparse
+import bwi_tools
+import os
+import subprocess
+import time
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--iterations", type=int, default=30)
+    parser.add_argument("--start-iteration", type=int, default=0)
+    parser.add_argument('--slow-kitchen',dest='slow_kitchen',action='store_true')
+    parser.add_argument('--no-slow-kitchen',dest='slow_kitchen',action='store_false')
+    parser.add_argument('--costs-file',default='/tmp/distances.lua')
+    parser.add_argument('--values-file',default='/tmp/values')
+    parser.set_defaults(slow_kitchen=False)
+    args = parser.parse_args()
+    
+    first = False
+    for i in range(args.start_iteration, args.iterations):
+        if os.path.exists(args.values_file + str(i+1)):
+            continue
+
+        if not first:
+            # Start the environment and the cost learner
+            env = bwi_tools.start_roslaunch_process('bwi_planning',
+                     'environment_krr2014.launch')
+            time.sleep(10) # Make sure the environment comes up
+            cost_learner_args = {
+                'costs_file' : args.costs_file,
+                'values_file' : args.values_file
+            }
+            cost_learner = bwi_tools.start_roslaunch_process(
+                'bwi_planning',
+                'cost_learner_krr2014.launch',
+                cost_learner_args
+            )
+            time.sleep(5)
+            first = True
+
+        # Make sure robot is in the correct starting position
+        print "Moving robot back to the original position"
+        subprocess.call(["rosservice", "call", "--wait", "/gazebo/set_model_state",
+                         "{model_state: {model_name: 'segbot', pose: {position: {x: 22, y: 11.5}, orientation: {w: 1.0}}}}"])
+        time.sleep(5)
+        # Start this episode/iteration
+        experiment_args = {'costs_file' : args.costs_file}
+        experiment = bwi_tools.start_roslaunch_process(
+            'bwi_planning',
+            'experiment_krr2014.launch',
+            experiment_args
+        )
+
+        experiment.wait()
+        time.sleep(5)
+
+    if not first:
+        print "It seems like the experiment is already complete. To run the " +\
+              "experiment afresh, run the reset_experiment script."
+    else:
+        bwi_tools.stop_roslaunch_process(env)
+        bwi_tools.stop_roslaunch_process(cost_learner)
