@@ -9,6 +9,8 @@
   <arg name="costs_file" default="$(find bwi_planning)/experiment/distances.lua" />
   <arg name="rigid_knowledge_file" default="$(find bwi_planning)/domain/experiment" />
 
+  <arg name="planning_times_file" default="/tmp/planning_times.txt" />
+
   <arg name="dry_run" default="false" />
   <arg name="auto_open_door" default="true" />
   <arg name="use_cost_optimization" default="false" />
@@ -30,7 +32,10 @@
 
     <param name="dry_run" value="$(arg dry_run)" />
     <param name="auto_open_door" value="$(arg auto_open_door)" />
+
     <param name="enable_learning" value="$(arg enable_learning)" />
+    <param if="$(arg enable_learning)" name="planning_times_file"
+      value="$(arg planning_times_file)" />
     
   </node>
 

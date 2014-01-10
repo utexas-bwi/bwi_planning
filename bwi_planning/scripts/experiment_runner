@@ -15,6 +15,7 @@ if __name__ == '__main__':
     parser.add_argument('--no-slow-kitchen',dest='slow_kitchen',action='store_false')
     parser.add_argument('--costs-file',default='/tmp/distances.lua')
     parser.add_argument('--values-file',default='/tmp/values')
+    parser.add_argument('--planning-times-file',default='/tmp/planning_times.txt')
     parser.set_defaults(slow_kitchen=False)
     args = parser.parse_args()
     
@@ -46,7 +47,10 @@ if __name__ == '__main__':
                          "{model_state: {model_name: 'segbot', pose: {position: {x: 22, y: 11.5}, orientation: {w: 1.0}}}}"])
         time.sleep(5)
         # Start this episode/iteration
-        experiment_args = {'costs_file' : args.costs_file}
+        experiment_args = {
+            'costs_file' : args.costs_file,
+            'planning_times_file' : args.planning_times_file
+        }
         experiment = bwi_tools.start_roslaunch_process(
             'bwi_planning',
             'experiment_krr2014.launch',

@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import time
 import rospy
 import shutil
 
@@ -55,6 +56,8 @@ class PlannerKRR2014(object):
             self.add_sample = \
                     rospy.ServiceProxy('cost_learner/add_sample', 
                                        CostLearnerInterface)
+            self.planning_times_file = rospy.get_param("~planning_times_file",
+                                                       None)
 
         self.initialized = True
 
@@ -110,11 +113,17 @@ class PlannerKRR2014(object):
         while True:
             if self.domain_costs_file != None:
                 rospy.loginfo("Planning with cost optimization!!")
+                start_time = time.time()
                 plan_available, optimization, plan, states = \
                         self.clingo_interface.get_plan_costs([self.initial_file,
                                                       self.query_file,
                                                       self.costs_file,
                                                       self.domain_costs_file])
+                duration = time.time() - start_time
+                if self.enable_learning and self.planning_times_file:
+                    ptf = open(self.planning_times_file, "a")
+                    ptf.write(str(duration) + "\n")
+                    ptf.close()
             else:
                 plan_available, optimization, plan, states = \
                         self.clingo_interface.get_plan([self.initial_file,
