@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
+import actionlib
 import rospy
+import threading
 import time
 import yaml
 
@@ -8,6 +10,7 @@ from bwi_planning_common.srv import PlannerInterface
 from bwi_planning_common.msg import PlannerAtom
 from bwi_tools import WallRate
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from segbot_gui.srv import QuestionDialog, QuestionDialogRequest
 from segbot_simulation_apps.srv import DoorHandlerInterface
 
@@ -47,6 +50,9 @@ class ActionExecutor(object):
             self.pose_subscriber = rospy.Subscriber("amcl_pose", 
                                                     PoseWithCovarianceStamped, 
                                                     self.pose_handler)
+            self.move_base_client = actionlib.SimpleActionClient(
+                'move_base', MoveBaseAction)
+            self.move_base_client.wait_for_server()
 
         # segbot gui
         rospy.loginfo("Waiting for GUI to come up...")
@@ -67,19 +73,30 @@ class ActionExecutor(object):
                                                  DoorHandlerInterface)
 
     def pose_handler(self, msg):
+        self.position_frame_id = msg.header.frame_id
+        self.pose = msg.pose.pose
         self.position = msg.pose.pose.postion
 
-    def stop_robot
+    def stop_robot(self):
+        goal = MoveBaseGoal()
+        goal.target_pose = self.pose
+        self.move_base_client.send_goal(goal)
+        self.move_base_client.wait_for_result()
 
-    def delay_handler():
+    def delay_handler(self):
         self.expect_delays = True
-        self.
+        r = rospy.Rate(1)
         while self.expect_delays:
-            for i,delay in self.artificial_delays:
+            for i,delay in enumerate(self.artificial_delays):
                 if i in self.delays_encountered:
                     continue
                 if point_in_polygon([self.position.x, self.position.y],
-                                    delay['location'])
+                                    delay['location']):
+                    self.delays_encountered.append(i)
+                    self.stop_robot()
+                    self.delay_time = delay['time']
+                    self.stopping_for_delay = True
+            r.sleep()
 
     def sense_initial_state(self):
 
@@ -114,14 +131,16 @@ class ActionExecutor(object):
         success = False
         if (action.name == "approach" or action.name == "gothrough"):
 
+            self.stopping_for_delay = False
             if self.artificial_delays:
                 self.delay_thread = threading.Thread(self.delay_handler())
 
             while True:
                 response = self.nav_executor(PlannerAtom(action.name, 
                                                          [str(action.value)]))
-                if response.success:
+                if response.success or not self.stopping_for_delay:
                     break
+                time.sleep(self.delay_time)
 
             if self.artificial_delays:
                 self.expect_delays = False
