@@ -42,8 +42,11 @@ class ActionExecutor(object):
 
         # Atificially slow the robot down in the specified areas
         self.artificial_delays = None
-        self.aritificial_delay_file = rospy.get_param("~artificial_delay_file", None)
+        self.artificial_delay_file = \
+                rospy.get_param("~artificial_delay_file", None)
         if self.artificial_delay_file:
+            rospy.loginfo("Using artificial delays read from " + 
+                          self.artificial_delay_file)
             adf = open(self.artificial_delay_file)
             self.artificial_delays = yaml.load(adf)
             adf.close()
@@ -75,27 +78,31 @@ class ActionExecutor(object):
     def pose_handler(self, msg):
         self.position_frame_id = msg.header.frame_id
         self.pose = msg.pose.pose
-        self.position = msg.pose.pose.postion
+        self.position = msg.pose.pose.position
 
     def stop_robot(self):
         goal = MoveBaseGoal()
-        goal.target_pose = self.pose
+        goal.target_pose.header.stamp = rospy.get_rostime()
+        goal.target_pose.header.frame_id = self.position_frame_id
+        goal.target_pose.pose = self.pose
         self.move_base_client.send_goal(goal)
         self.move_base_client.wait_for_result()
 
-    def delay_handler(self):
-        self.expect_delays = True
+    def artificial_delay_handler(self):
+        self.expect_artificial_delays = True
+        delays_encountered = []
         r = rospy.Rate(1)
-        while self.expect_delays:
+        while self.expect_artificial_delays:
             for i,delay in enumerate(self.artificial_delays):
-                if i in self.delays_encountered:
+                if i in delays_encountered:
                     continue
                 if point_in_polygon([self.position.x, self.position.y],
                                     delay['location']):
-                    self.delays_encountered.append(i)
+                    print "in delay region"
+                    delays_encountered.append(i)
+                    self.artificial_delay_time = delay['time']
+                    self.stopping_for_artificial_delay = True
                     self.stop_robot()
-                    self.delay_time = delay['time']
-                    self.stopping_for_delay = True
             r.sleep()
 
     def sense_initial_state(self):
@@ -131,20 +138,23 @@ class ActionExecutor(object):
         success = False
         if (action.name == "approach" or action.name == "gothrough"):
 
-            self.stopping_for_delay = False
+            self.stopping_for_artificial_delay = False
             if self.artificial_delays:
-                self.delay_thread = threading.Thread(self.delay_handler())
+                self.artificial_delay_thread = \
+                        threading.Thread(target=self.artificial_delay_handler)
+                self.artificial_delay_thread.start()
 
             while True:
                 response = self.nav_executor(PlannerAtom(action.name, 
                                                          [str(action.value)]))
-                if response.success or not self.stopping_for_delay:
+                if response.success or not self.stopping_for_artificial_delay:
                     break
-                time.sleep(self.delay_time)
+                rospy.sleep(self.artificial_delay_time)
+                self.stopping_for_artificial_delay = False
 
             if self.artificial_delays:
-                self.expect_delays = False
-                self.delay_thread.join()
+                self.expect_artificial_delays = False
+                self.artificial_delay_thread.join()
 
             if self.auto_open_door:
                 # close the door now that it was automatically opened

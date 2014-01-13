@@ -16,6 +16,10 @@
   <arg name="use_cost_optimization" default="false" />
   <arg name="enable_learning" default="false" />
 
+  <arg name="enable_artificial_delays" default="false" />
+  <arg name="artificial_delay_file" 
+    default="$(find bwi_planning)/config/kitchen_delay.yaml" />
+
   <node name="planner_krr2014" type="planner_krr2014" pkg="bwi_planning"
     output="screen" required="true">
 
@@ -36,6 +40,9 @@
     <param name="enable_learning" value="$(arg enable_learning)" />
     <param if="$(arg enable_learning)" name="planning_times_file"
       value="$(arg planning_times_file)" />
+    
+    <param if="$(arg enable_artificial_delays)" name="artificial_delay_file"
+      value="$(arg artificial_delay_file)" />
     
   </node>
 

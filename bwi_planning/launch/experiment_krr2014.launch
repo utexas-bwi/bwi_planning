@@ -1,6 +1,9 @@
 <launch>
 
   <arg name="costs_file" default="/tmp/distances.lua" />
+  <arg name="enable_artificial_delays" default="false" />
+  <arg name="artificial_delay_file" 
+    default="$(find bwi_planning)/config/kitchen_delay.yaml" />
 
   <!-- launch the gui -->
   <node name="segbot_gui" pkg="segbot_gui" type="question_dialog_plugin" />
@@ -10,6 +13,9 @@
     <arg name="use_cost_optimization" value="true" />
     <arg name="costs_file" value="$(arg costs_file)" />
     <arg name="enable_learning" value="true" />
+    <arg name="enable_artificial_delays" 
+      value="$(arg enable_artificial_delays)" />
+    <arg name="artificial_delay_file" value="$(arg artificial_delay_file)" />
   </include>
 
 </launch>

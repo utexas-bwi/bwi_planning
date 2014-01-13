@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--iterations", type=int, default=30)
-    parser.add_argument("--start-iteration", type=int, default=0)
+    parser.add_argument("--start-iteration", type=int, default=1)
     parser.add_argument('--slow-kitchen',dest='slow_kitchen',action='store_true')
     parser.add_argument('--no-slow-kitchen',dest='slow_kitchen',action='store_false')
     parser.add_argument('--costs-file',default='/tmp/distances.lua')
@@ -20,8 +20,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     first = False
-    for i in range(args.start_iteration, args.iterations):
-        if os.path.exists(args.values_file + str(i+1)):
+    for i in range(args.start_iteration, args.start_iteration+args.iterations):
+        if os.path.exists(args.values_file + str(i)):
             continue
 
         if not first:
@@ -51,6 +51,8 @@ if __name__ == '__main__':
             'costs_file' : args.costs_file,
             'planning_times_file' : args.planning_times_file
         }
+        if args.slow_kitchen:
+            experiment_args['enable_artificial_delays'] = 'true'
         experiment = bwi_tools.start_roslaunch_process(
             'bwi_planning',
             'experiment_krr2014.launch',
