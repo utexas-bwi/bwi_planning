@@ -31,6 +31,10 @@ if len(sys.argv) > 2:
 max_iter = 30
 if len(sys.argv) > 3:
     max_iter = int(sys.argv[3])
+plot_vertical_line = False
+if len(sys.argv) > 4:
+    if sys.argv[4] == 'v':
+        plot_vertical_line = True
 
 N = max_iter - min_iter + 1
 X = np.arange(min_iter, max_iter + 1)
@@ -66,8 +70,10 @@ ax.set_ylabel('Path Cost Estimate')
 ax.set_xlabel('Episode Number')
 ax.set_title('Cost Learning')
  
-ax.legend((p1,p2,p3), ('Path 1', 'Path 2', 'Path 3'), handlelength=4)
-plt.axis([min_iter, max_iter, 20, 180])
+ax.legend((p1,p2,p3), ('Plan 1', 'Plan 2', 'Plan 3'), handlelength=4)
+plt.axis([min_iter, max_iter, 20, 120])
+if plot_vertical_line:
+    plt.axvline(x=30, color='black', linewidth=2)
 #plt.show()
  
 fig = plt.gcf()

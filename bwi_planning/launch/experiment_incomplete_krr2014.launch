@@ -1,0 +1,14 @@
+<launch>
+
+  <!-- launch the simulation environment (also launches the gui) -->
+  <include file="$(find bwi_planning)/launch/environment_krr2014.launch" />
+
+  <!-- launch the gui -->
+  <node name="segbot_gui" pkg="segbot_gui" type="question_dialog_plugin" />
+
+  <!-- launch the planner -->
+  <include file="$(find bwi_planning)/launch/planner_krr2014.launch">
+    <arg name="query_file" value="$(find bwi_planning)/experiment/query_incomplete" />
+  </include>
+
+</launch>

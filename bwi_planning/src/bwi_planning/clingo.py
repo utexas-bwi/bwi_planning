@@ -48,6 +48,9 @@ class ClingoWrapper(object):
         self.clingo_timeout = rospy.get_param("~clingo_timeout", 60)
         self.clingo_steps = rospy.get_param("~clingo_steps", 15)
         self.clingo_threads = rospy.get_param("~clingo_threads", 6)
+        rospy.loginfo("Clingo: Using " + str(self.clingo_threads) + " threads" +
+                      " for " + str(self.clingo_timeout) + " seconds. max_len" +
+                      " is set to " + str(self.clingo_steps))
         self.domain_semantics_file = rospy.get_param("~domain_semantics_file")
         self.rigid_knowledge_file = rospy.get_param("~rigid_knowledge_file")
 

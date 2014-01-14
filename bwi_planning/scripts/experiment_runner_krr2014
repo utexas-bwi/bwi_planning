@@ -3,10 +3,23 @@
 import argparse
 import bwi_tools
 import os
+import roslib.packages
+import signal
 import subprocess
+import sys
 import time
 
+open_roslaunch_processes = []
+
+def signal_handler(signal, frame):
+    for process in open_roslaunch_processes:
+        bwi_tools.stop_roslaunch_process(process)
+        process.wait()
+    sys.exit(0)
+
 if __name__ == '__main__':
+
+    signal.signal(signal.SIGINT, signal_handler)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--iterations", type=int, default=30)
@@ -14,20 +27,24 @@ if __name__ == '__main__':
     parser.add_argument('--slow-kitchen',dest='slow_kitchen',action='store_true')
     parser.add_argument('--no-slow-kitchen',dest='slow_kitchen',action='store_false')
     parser.add_argument('--costs-file',default='/tmp/distances.lua')
+    parser.add_argument('--heuristics',dest='heuristics',action='store_true')
+    parser.add_argument('--no-heuristics',dest='heuristics',action='store_false')
     parser.add_argument('--values-file',default='/tmp/values')
     parser.add_argument('--planning-times-file',default='/tmp/planning_times.txt')
     parser.set_defaults(slow_kitchen=False)
+    parser.set_defaults(heuristics=False)
     args = parser.parse_args()
     
     first = False
     for i in range(args.start_iteration, args.start_iteration+args.iterations):
-        if os.path.exists(args.values_file + str(i)):
+        if not first and os.path.exists(args.values_file + str(i)):
             continue
 
         if not first:
             # Start the environment and the cost learner
             env = bwi_tools.start_roslaunch_process('bwi_planning',
                      'environment_krr2014.launch')
+            open_roslaunch_processes.append(env)
             time.sleep(10) # Make sure the environment comes up
             cost_learner_args = {
                 'costs_file' : args.costs_file,
@@ -38,6 +55,7 @@ if __name__ == '__main__':
                 'cost_learner_krr2014.launch',
                 cost_learner_args
             )
+            open_roslaunch_processes.append(cost_learner)
             time.sleep(5)
             first = True
 
@@ -53,13 +71,19 @@ if __name__ == '__main__':
         }
         if args.slow_kitchen:
             experiment_args['enable_artificial_delays'] = 'true'
+        if not args.heuristics:
+            experiment_args['clingo_timeout'] = '900'
+            experiment_args['query_file'] = \
+                    roslib.packages.get_pkg_dir('bwi_planning') + \
+                    '/experiment/query_no_heuristics'
         experiment = bwi_tools.start_roslaunch_process(
             'bwi_planning',
             'experiment_krr2014.launch',
             experiment_args
         )
-
+        open_roslaunch_processes.append(experiment)
         experiment.wait()
+        open_roslaunch_processes.remove(experiment)
         time.sleep(5)
 
     if not first:
@@ -68,3 +92,17 @@ if __name__ == '__main__':
     else:
         bwi_tools.stop_roslaunch_process(env)
         bwi_tools.stop_roslaunch_process(cost_learner)
+        open_roslaunch_processes.remove(env)
+        open_roslaunch_processes.remove(cost_learner)
+
+    # Print average planning time for the experiment
+    average_planning_time = 0.0
+    count = 0
+    with open(args.planning_times_file, "r") as planning_times_file:
+        line = planning_times_file.readline()
+        while line:
+            average_planning_time += float(line)
+            count += 1
+            line = planning_times_file.readline()
+    average_planning_time /= count
+    print "Average Initial Planning Time: " + str(average_planning_time)
