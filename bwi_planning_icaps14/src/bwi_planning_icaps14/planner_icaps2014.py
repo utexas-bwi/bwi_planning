@@ -8,7 +8,8 @@ import shutil
 from bwi_planning.srv import CostLearnerInterface, CostLearnerInterfaceRequest
 from std_srvs.srv import Empty
 
-from bwi_planning import ActionExecutor
+from .action_executor_icaps2014 import ActionExecutorICAPS2014
+from .aton_icaps2014 import AtomICAPS2014
 from bwi_planning import ClingoWrapper
 
 def get_adjacent_door(atoms):
@@ -45,9 +46,18 @@ def read_table_from_file(file):
                 continue
             row[column_headers[i-1]] = cast_boolean(column_val)
 
-    print t
     csvfile.close()
     return t
+
+def write_table_to_file(fluent_name, table, file_name, time=None):
+    for row_name, row in table.iteritems():
+        for column_name, value in row.iteritems():
+            AtomICAPS2014
+    atoms = [AtomICAPS2014(fluent_name, row_name+','+column_name, time, value)]
+    table_file = open(file_name, 'w')
+    for atom in atoms:
+        table_file.write(str(atom) + '\n')
+    table_file.close()
 
 class PlannerICAPS2014(object):
 
@@ -55,7 +65,7 @@ class PlannerICAPS2014(object):
         self.initialized = False
 
         self.dry_run = rospy.get_param("~dry_run", False)
-        self.clingo_interface = ClingoWrapper()
+        self.clingo_interface = ClingoWrapper(AtomICAPS2014)
         initial_file = rospy.get_param("~initial_file", None)
         self.query_file = rospy.get_param("~query_file")
         self.passto_file = rospy.get_param("~passto_file")
@@ -75,7 +85,7 @@ class PlannerICAPS2014(object):
                           self.initial_file)
             shutil.copyfile(initial_file, self.initial_file)
 
-        self.executor = ActionExecutor(self.dry_run, self.initial_file)
+        self.executor = ActionExecutorICAPS2014(self.dry_run, self.initial_file)
 
         if self.enable_learning: 
             rospy.wait_for_service('cost_learner/increment_episode')
@@ -142,16 +152,32 @@ class PlannerICAPS2014(object):
         if not self.initialized:
             return
         self.executor.sense_initial_state()
-        #TODO incorporate tables by writing them to file
+
+        # Write tables to file
+        passto_file = '/tmp/passto'
+        write_table_to_file('passto', self.passto_table, passto_file)
+        knows_file = '/tmp/knows'
+        write_table_to_file('knows', self.knows_table, knows_file)
+        knowinside_file = '/tmp/knowinside'
+        write_table_to_file('knowinside', self.knowinside_table,
+                            knowinside_file, 0)
+        first_run = True
         while True:
+            additional_files = []
+            if first_run:
+                additional_files = [passto_file,
+                                    knowinside_file,
+                                    knows_file]
+                first_run = False
             if self.domain_costs_file != None:
                 rospy.loginfo("Planning with cost optimization!!")
                 start_time = time.time()
                 plan_available, optimization, plan, states = \
                         self.clingo_interface.get_plan_costs([self.initial_file,
-                                                      self.query_file,
-                                                      self.costs_file,
-                                                      self.domain_costs_file])
+                              self.query_file,
+                              self.costs_file,
+                              self.domain_costs_file].extend(additional_files)
+                        )
                 duration = time.time() - start_time
                 if self.enable_learning and self.planning_times_file:
                     ptf = open(self.planning_times_file, "a")
@@ -160,7 +186,7 @@ class PlannerICAPS2014(object):
             else:
                 plan_available, optimization, plan, states = \
                         self.clingo_interface.get_plan([self.initial_file,
-                                                      self.query_file])
+                                                      self.query_file].extend(additional_files))
             if not plan_available:
                 rospy.logfatal("No plan found to complete task!")
                 break

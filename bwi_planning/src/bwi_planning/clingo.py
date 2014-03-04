@@ -8,7 +8,7 @@ import threading
 
 from .atom import Atom
 
-def parse_plan(atom_class, plan_string):
+def parse_plan(plan_string, atom_class):
     atoms = [atom_class(word) for word in plan_string.split()]
     plan = [atom for atom in atoms if atom.type == Atom.ACTION]
     states = [atom for atom in atoms if atom.type == Atom.FLUENT]
@@ -87,7 +87,7 @@ class ClingoWrapper(object):
                 continue
 
             try:
-                plan, states = parse_plan(plan_line)
+                plan, states = parse_plan(plan_line, self.atom_class)
             except ValueError as e:
                 rospy.logerr("Received plan from clasp, but unable to parse plan:" +
                              plan_line)
@@ -132,7 +132,7 @@ class ClingoWrapper(object):
             return False, 0, None, None
 
         try:
-            plan, states = parse_plan(plan_line)
+            plan, states = parse_plan(plan_line, self.atom_class)
             #correct_execution_order(plan, states)
         except ValueError as e:
             rospy.logerr("Received plan from clasp, but unable to parse plan:" +

@@ -11,17 +11,13 @@ class AtomKRR2014(Atom):
     def __init__(self, name, value=None, time=None, negated=False):
         super(AtomKRR2014, self).__init__(name, value, time, negated)
 
-        if self.type == Atom.ACTION or self.type == Atom.FLUENT: 
+        if self.type == None:
             if self.name in AtomKRR2014.ACTION_NAMES:
                 self.type = Atom.ACTION
-                return
-            if self.name in AtomKRR2014.FLUENT_NAMES:
+            elif self.name in AtomKRR2014.FLUENT_NAMES:
                 self.type = Atom.FLUENT
-                return
-        else:
-            return
-
-        raise ValueError("Malformed atom - Unknown action/fluent: %s"%str(name))
+            else:
+                self.type == Atom.TERM
 
     def conflicts_with(self, other):
         """

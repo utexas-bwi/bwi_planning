@@ -25,7 +25,7 @@ class Atom(object):
                 self.value = value
             else:
                 self.value = Atom(value)
-
+            self.type = None
         else:
             # Need to parse atom from string 
             start = [-1]

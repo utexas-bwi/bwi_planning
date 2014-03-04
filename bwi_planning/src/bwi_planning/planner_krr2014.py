@@ -46,8 +46,7 @@ class PlannerKRR2014(object):
                           self.initial_file)
             shutil.copyfile(initial_file, self.initial_file)
 
-        self.executor = ActionExecutorKRR2014(self.dry_run, self.initial_file,
-                                              AtomKRR2014)
+        self.executor = ActionExecutorKRR2014(self.dry_run, self.initial_file)
 
         if self.enable_learning: 
             rospy.wait_for_service('cost_learner/increment_episode')
