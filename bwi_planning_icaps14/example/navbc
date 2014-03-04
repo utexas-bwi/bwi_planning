@@ -1,0 +1,90 @@
+:- sorts
+	room>>office;
+	door;
+	person.
+	
+:- objects
+	alice,bob,carol,dan :: person;
+	o1,o2,o3,lab1   		:: office;
+	cor		            	:: room;
+	d1,d2,d3	        	:: door.
+
+:- variables
+	D,D1,D2,D3 	  	:: door;
+	P,P1,P2,P3	  	:: person;
+	R,R1,R2,R3  		:: room;
+	O,O1,O2,O3	  	:: office.	
+
+:- constants
+        hasdoor(room,door), acc(room,door,room), 
+        knows(person,person), passto(person,person) :: rigidFluent;
+	
+        inside(person,room), beside(door), facing(door),
+        knowinside(person,room), collectmail(person):: inertialFluent;
+
+        loc :: inertialFluent(room);
+	
+        open(door), visiting(person) :: simpleFluent;
+	
+        approach(door), gothrough(door), callforopen(door), 
+        goto(person), askploc(person,person), collectmail(room) :: action.
+
+default -hasdoor(R,D).
+caused hasdoor(o1,d1).
+caused hasdoor(o2,d2).
+caused hasdoor(o3,d3).
+
+default -acc(R1,D,R2).
+
+caused acc(R1,D,R2) if hasdoor(R1,D), hasdoor(R2,D).
+caused acc(R1,D,R2) if acc(R2,D,R1).
+
+default -knows(P1,P2).
+default -passto(P1,P2).
+
+caused mailcollected(P1) if mailcollected(P2), passto(P1, P2).
+
+default -open(D).	
+
+caused -beside(D1) if beside(D2) where D2\=D1.
+caused -facing(D2) if facing(D1) where D2\=D1.
+caused beside(D) if facing(D).
+
+caused -inside(P,R1) if inside(P,R2) where R2\=R1.
+caused -knowinside(P,R2) if knowinside(P,R1) where R2\=R1.
+
+caused inside(P,R) if knowinside(P,R).
+
+default -open(D).
+default -visiting(P).
+
+approach(D) causes facing(D).
+nonexecutable approach(D) if loc=R, -hasdoor(R,D).
+nonexecutable approach(D) if facing(D).
+
+gothrough(D) causes loc=R if acc(R1,D,R), loc=R1 where R\=R1.
+gothrough(D) causes -facing(D).
+nonexecutable gothrough(D) if -facing(D).
+nonexecutable gothrough(D) if -open(D).
+nonexecutable gothrough(D) if loc=R, -hasdoor(R,D).
+
+callforopen(D) causes open(D).
+nonexecutable callforopen(D) if -facing(D).
+nonexecutable callforopen(D) if open(D).
+
+goto(P) causes visiting(P).
+goto(P) causes served(P).
+%goto(P) causes served(P1) if relatedto(P,P1).
+caused served(P1) if served(P), relatedto(P,P1).
+nonexecutable goto(P) if loc=R, -knowinside(P,R).
+nonexecutable goto(P) if loc\=R, knowinside(P,R).
+
+askploc(P1,P) causes knowinside(P,R) if inside(P,R).
+nonexecutable askploc(P1,P) if -visiting(P1).
+nonexecutable askploc(P1,P) if visiting(P1), -knows(P1,P).
+nonexecutable askploc(P1,P) if knowinside(P,R).
+
+noconcurrency.
+
+% initial state: knowinside(P,R) is false by default at initial state
+% people's locations known to the robot are encoded as knowinside(p,r) 
