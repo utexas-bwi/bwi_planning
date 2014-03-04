@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package>
+  <name>bwi_planning_icaps14</name>
+  <version>0.0.0</version>
+  <description>ASP based planning presented at ICAPS 2014</description>
+
+  <maintainer email="piyushk@gmail.com">Piyush Khandelwal</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://wiki.ros.org/bwi_planning</url>
+  <url type="repository">https://github.com/utexas-bwi/segbot.git</url>
+  <url type="bugtracker">https://github.com/utexas-bwi/segbot/issues</url>
+
+  <author email="piyushk@gmail.com">Piyush Khandelwal</author>
+  <author>Fangkai Yang</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>bwi_planning</run_depend>
+
+  <!-- launch only dependencies -->
+  <run_depend>segbot_gazebo</run_depend>
+  <run_depend>segbot_gui</run_depend>
+  <run_depend>segbot_logical_translator</run_depend>
+  <run_depend>segbot_navigation</run_depend>
+  <run_depend>segbot_simulation_apps</run_depend>
+  <run_depend>utexas_gdc</run_depend>
+
+</package>

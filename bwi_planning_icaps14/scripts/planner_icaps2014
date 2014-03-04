@@ -1,0 +1,14 @@
+#! /usr/bin/env python
+
+import rospy
+
+from bwi_planning_icaps14 import PlannerICAPS2014
+
+if __name__ == '__main__':
+    try:
+        rospy.init_node('planner_krr2014')
+        client = PlannerICAPS2014()
+    except rospy.ROSInterruptException:
+        rospy.logwarn("Planner interrupted before completeion!")
+
+

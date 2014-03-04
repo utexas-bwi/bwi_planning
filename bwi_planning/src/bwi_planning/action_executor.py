@@ -31,7 +31,7 @@ def point_in_polygon(point, polygon):
 
 class ActionExecutor(object):
 
-    def __init__(self, dry_run=False, initial_file=None):
+    def __init__(self, dry_run=False, initial_file=None, atom_class=Atom):
 
         self.dry_run = dry_run
         if self.dry_run:
@@ -74,6 +74,7 @@ class ActionExecutor(object):
             if self.auto_open_door:
                 self.update_doors = rospy.ServiceProxy('update_doors', 
                                                  DoorHandlerInterface)
+        self.atom_class = atom_class
 
     def pose_handler(self, msg):
         self.position_frame_id = msg.header.frame_id
@@ -119,7 +120,7 @@ class ActionExecutor(object):
         initial_file = open(self.initial_file,"w")
         display_message = "Initial state: "
         for fluent in result.observations:
-            atom = Atom(fluent.name, ",".join(fluent.value), time=0)
+            atom = self.atom_class(fluent.name, ",".join(fluent.value), time=0)
             initial_file.write(str(atom) + ".\n")
             display_message += str(atom) + " "
         initial_file.close()
@@ -214,8 +215,9 @@ class ActionExecutor(object):
 
         observations = []
         for fluent in result:
-            observations.append(Atom(fluent.name, 
-                                     ",".join(fluent.value),time=next_step))
+            observations.append(self.atom_class(fluent.name, 
+                                                ",".join(fluent.value),
+                                                time=next_step))
         rospy.loginfo("  Observations: " + str(observations))
         return success, observations
 

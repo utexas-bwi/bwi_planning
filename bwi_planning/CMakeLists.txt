@@ -23,7 +23,7 @@ generate_messages(
 
 catkin_package(
   DEPENDS
-    boost
+    Boost
   CATKIN_DEPENDS
     bwi_planning_common
     message_runtime
@@ -31,11 +31,9 @@ catkin_package(
     std_msgs
     std_srvs
   INCLUDE_DIRS
-    include
-    ${Boost_INCLUDE_DIRS}
+    include/
   LIBRARIES
     ${PROJECT_NAME}
-    ${Boost_LIBRARIES}
 )
 
 
@@ -65,3 +63,13 @@ if (CATKIN_ENABLE_TESTING)
   find_package(roslaunch REQUIRED)
   roslaunch_add_file_check(launch)
 endif (CATKIN_ENABLE_TESTING)
+
+# Install the plugin and the plugin description
+install (DIRECTORY include/bwi_planning/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
+
+install(TARGETS ${PROJECT_NAME} cost_learner
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

@@ -23,9 +23,8 @@ generate_messages(
 
 catkin_package(
   DEPENDS 
-    boost
-    opencv2
-    yaml-cpp
+    Boost
+    OpenCV
   CATKIN_DEPENDS
     bwi_mapper
     bwi_tools
@@ -33,14 +32,8 @@ catkin_package(
     std_msgs
   INCLUDE_DIRS
     include
-    ${Boost_INCLUDE_DIRS}
-    ${OpenCV_INCLUDE_DIRS}
-    ${YAML_CPP_INCLUDE_DIRS}
   LIBRARIES
     ${PROJECT_NAME}
-    ${Boost_LIBRARIES}
-    ${OpenCV_LIBRARIES}
-    ${YAML_CPP_LIBRARIES}
 )
 
 include_directories(

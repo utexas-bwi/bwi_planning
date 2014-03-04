@@ -6,10 +6,10 @@ import signal
 import subprocess
 import threading
 
-from .atom import Atom, parse_atoms
+from .atom import Atom
 
-def parse_plan(plan_string):
-    atoms = parse_atoms(plan_string)
+def parse_plan(atom_class, plan_string):
+    atoms = [atom_class(word) for word in plan_string.split()]
     plan = [atom for atom in atoms if atom.type == Atom.ACTION]
     states = [atom for atom in atoms if atom.type == Atom.FLUENT]
     plan = sorted(plan, key=lambda atom: atom.time)
@@ -44,7 +44,7 @@ class ClingoCommand(object):
 
 class ClingoWrapper(object):
 
-    def __init__(self):
+    def __init__(self, atom_class):
         self.clingo_timeout = rospy.get_param("~clingo_timeout", 60)
         self.clingo_steps = rospy.get_param("~clingo_steps", 15)
         self.clingo_threads = rospy.get_param("~clingo_threads", 6)
@@ -53,6 +53,7 @@ class ClingoWrapper(object):
                       " is set to " + str(self.clingo_steps))
         self.domain_semantics_file = rospy.get_param("~domain_semantics_file")
         self.rigid_knowledge_file = rospy.get_param("~rigid_knowledge_file")
+        self.atom_class = atom_class
 
     def get_plan(self, additional_files):
 

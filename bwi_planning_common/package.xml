@@ -2,7 +2,11 @@
 <package>
   <name>bwi_planning_common</name>
   <version>0.0.0</version>
-  <description>The bwi_planning_common package</description>
+  <description>
+    Common data structures, messages and service defintions used for
+    deterministic planning work in the BWI project at the University of Texas
+    at Austin
+  </description>
 
   <maintainer email="piyushk@gmail.com">Piyush Khandelwal</maintainer>
 

@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import csv
 import time
 import rospy
 import shutil
@@ -7,9 +8,8 @@ import shutil
 from bwi_planning.srv import CostLearnerInterface, CostLearnerInterfaceRequest
 from std_srvs.srv import Empty
 
-from .action_executor_krr2014 import ActionExecutorKRR2014
-from .clingo import ClingoWrapper
-from .atom_krr2014 import AtomKRR2014
+from bwi_planning import ActionExecutor
+from bwi_planning import ClingoWrapper
 
 def get_adjacent_door(atoms):
     for atom in atoms:
@@ -23,15 +23,44 @@ def get_location(atoms):
             return str(atom.value)
     return None
 
-class PlannerKRR2014(object):
+def cast_boolean(s):
+    return s in ['1','t','true','T','True','TRUE','y','Y','yes','Yes','YES']
+
+def read_table_from_file(file):
+    t = {}
+    csvfile = open(file, 'rb')
+    csvreader = csv.reader(csvfile)
+    first_row = True
+    for row in csvreader:
+        if first_row:
+            column_headers = row
+            first_row = False
+            continue
+        first_column = True
+        for i,column_val in enumerate(row):
+            if first_column:
+                t[column_val] = {}
+                row = t[column_val]
+                first_column = False
+                continue
+            row[column_headers[i-1]] = cast_boolean(column_val)
+
+    print t
+    csvfile.close()
+    return t
+
+class PlannerICAPS2014(object):
 
     def __init__(self):
         self.initialized = False
 
         self.dry_run = rospy.get_param("~dry_run", False)
-        self.clingo_interface = ClingoWrapper(AtomKRR2014)
+        self.clingo_interface = ClingoWrapper()
         initial_file = rospy.get_param("~initial_file", None)
         self.query_file = rospy.get_param("~query_file")
+        self.passto_file = rospy.get_param("~passto_file")
+        self.knowinside_file = rospy.get_param("~knowinside_file")
+        self.knows_file = rospy.get_param("~knows_file")
         self.domain_costs_file = rospy.get_param("~domain_costs_file", None)
         self.costs_file = rospy.get_param("~costs_file", None)
         self.enable_learning = rospy.get_param("~enable_learning", False)
@@ -46,8 +75,7 @@ class PlannerKRR2014(object):
                           self.initial_file)
             shutil.copyfile(initial_file, self.initial_file)
 
-        self.executor = ActionExecutorKRR2014(self.dry_run, self.initial_file,
-                                              AtomKRR2014)
+        self.executor = ActionExecutor(self.dry_run, self.initial_file)
 
         if self.enable_learning: 
             rospy.wait_for_service('cost_learner/increment_episode')
@@ -60,6 +88,9 @@ class PlannerKRR2014(object):
             self.planning_times_file = rospy.get_param("~planning_times_file",
                                                        None)
 
+        self.passto_table = read_table_from_file(self.passto_file)
+        self.knowinside_table = read_table_from_file(self.knowinside_file)
+        self.knows_table = read_table_from_file(self.knows_file)
         self.initialized = True
 
     def _construct_initial_state(self, previous_state, observations):
@@ -111,6 +142,7 @@ class PlannerKRR2014(object):
         if not self.initialized:
             return
         self.executor.sense_initial_state()
+        #TODO incorporate tables by writing them to file
         while True:
             if self.domain_costs_file != None:
                 rospy.loginfo("Planning with cost optimization!!")

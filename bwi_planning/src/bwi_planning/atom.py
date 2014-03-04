@@ -1,8 +1,5 @@
 #! /usr/bin/env python
 
-def parse_atoms(atom_string):
-    return [Atom(word) for word in atom_string.split()]
-
 class Atom(object):
 
     TERM = "term"
@@ -98,27 +95,15 @@ class Atom(object):
                     # This is a term
                     self.time = None
                     self.type = Atom.TERM
-                    return
             else:
                 self.time = None
                 self.type = Atom.TERM
-                return
         else:
             self.time = time
 
-        if self.name in Atom.ACTION_NAMES:
-            self.type = Atom.ACTION
-            return
-        if self.name in Atom.FLUENT_NAMES:
-            self.type = Atom.FLUENT
-            return
-
-        raise ValueError("Malformed atom - Unknown action/fluent: %s"%str(name))
-
     def conflicts_with(self, other):
         """
-          Detects only very basic conflicts with another atom. Tests for 
-          hard negation conflict and uniqueness constraints only.
+          Default contradiction test. Tests for hard negation only.
         """
 
         # Check for hard negation
@@ -126,25 +111,6 @@ class Atom(object):
            self.value == other.value and \
            self.negated != other.negated:
             return True
-
-        # Check for uniqueness constraints
-        if (self.name == "at" and other.name == "at" or \
-            self.name == "facing" and other.name == "facing" or \
-            self.name == "beside" and other.name == "beside") and \
-           self.value != other.value and \
-           not self.negated and not other.negated:
-            return True
-
-        # Check for uniqueness constraint for inside
-        # if the person is same, but the location is different and both 
-        # fluents are not negated
-        if self.name == "inside" and other.name == "inside" and \
-           self.value.value[0] == other.value.value[0] and \
-           self.value.value[1] != other.value.value[1] and \
-           not self.negated and not other.negated:
-            return True
-
-        return False
 
     def __str__(self):
         prefix = '-' if self.negated else ''
