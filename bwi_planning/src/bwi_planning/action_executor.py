@@ -209,7 +209,7 @@ class ActionExecutor(object):
             self.gui(QuestionDialogRequest.DISPLAY,
                      "Hello " + str(action.value) + "!!",
                      [], 0.0)
-            time.sleep(5.0)
+            time.sleep(2.0)
             result =  [PlannerAtom("visiting",[str(action.value)])]
             success = True
 
