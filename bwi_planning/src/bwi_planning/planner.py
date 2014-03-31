@@ -166,6 +166,7 @@ class Planner(object):
                     if observation not in next_state:
                         rospy.logwarn("  Unexpected observation: " + 
                                       str(observation))
+                        rospy.loginfo("  Expected Next State: " + str(next_state))
                         need_replan = True
                         break
                 if need_replan:
