@@ -4,6 +4,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include <bwi_planning_common/structures.h>
+#include <tf/transform_datatypes.h> 
 
 namespace bwi_planning_common {
   
@@ -64,6 +65,40 @@ namespace bwi_planning_common {
       }
       doors.push_back(door);
     }
+  }
+
+  bool readObjectApproachFile(const std::string& filename, 
+      std::map<std::string, geometry_msgs::Pose>& object_approach_map) {
+
+    object_approach_map.clear();
+    if (!boost::filesystem::exists(filename)) {
+
+      return false;
+    }
+
+    std::ifstream fin(filename.c_str());
+    YAML::Parser parser(fin);
+
+    YAML::Node doc;
+    parser.GetNextDocument(doc);
+
+    for (size_t i = 0; i < doc.size(); i++) {
+      std::string name;
+      geometry_msgs::Pose pose;
+      float yaw;
+      doc[i]["name"] >> name;
+      doc[i]["point"][0] >> pose.position.x;
+      doc[i]["point"][1] >> pose.position.y;
+      pose.position.z = 0;
+      doc[i]["point"][2] >> yaw;
+      tf::quaternionTFToMsg(                                                     
+          tf::createQuaternionFromYaw(yaw), pose.orientation);
+      object_approach_map[name] = pose;
+    }
+
+    fin.close();
+    
+    return true;
   }
 
   size_t resolveDoor(const std::string& door, const std::vector<Door>& doors) {
