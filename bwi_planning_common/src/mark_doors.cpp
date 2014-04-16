@@ -128,8 +128,8 @@ int main(int argc, char** argv) {
       current_door.approach_points[0] = toMap(mouseover_pt, info);
       current_door.approach_points[1] = toMap(other_pt, info);
       int loc1_id = 
-        location_map[MAP_IDX(mouseover_pt.x, mouseover_pt.y, image.cols)];
-      int loc2_id = location_map[MAP_IDX(other_pt.x, other_pt.y, image.cols)];
+        location_map[MAP_IDX(image.cols, mouseover_pt.x, mouseover_pt.y)];
+      int loc2_id = location_map[MAP_IDX(image.cols, other_pt.x, other_pt.y)];
       current_door.approach_names[0] = 
         (loc1_id != bwi_planning_common::INVALID_LOCATION) ? 
         locations[loc1_id] : "";
@@ -146,8 +146,7 @@ int main(int argc, char** argv) {
           2, cv::Scalar(0,255,0), -1); 
 
       float approach_orientation = atan2f(difference_pt.y, difference_pt.x);
-      float door_width_pxls = fabs(cosf(approach_orientation + M_PI / 2) * 
-          cv::norm(mouseover_pt - current_center_pt)); 
+      float door_width_pxls = cv::norm(mouseover_pt - current_center_pt); 
       cv::Point door_add = door_width_pxls * 
         cv::Point2f(cosf(approach_orientation + M_PI / 2),
                     sinf(approach_orientation + M_PI / 2));
