@@ -91,6 +91,9 @@ class ActionExecutor(object):
             self.sound_publisher.publish(req)
         return self._gui(displayType, text, choices, timeout)
 
+    def clear_gui(self):
+        self._gui(QuestionDialogRequest.DISPLAY, "", [], 0.0) 
+
     def pose_handler(self, msg):
         self.position_frame_id = msg.header.frame_id
         self.pose = msg.pose.pose
@@ -235,6 +238,7 @@ class ActionExecutor(object):
                                                 ",".join(fluent.value),
                                                 time=next_step))
         rospy.loginfo("  Observations: " + str(observations))
+        self.clear_gui()
         return success, observations
 
 
