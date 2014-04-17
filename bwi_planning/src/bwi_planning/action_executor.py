@@ -137,7 +137,8 @@ class ActionExecutor(object):
             return True, next_state
 
         success = False
-        if (action.name == "approach" or action.name == "gothrough"):
+        if (action.name == "approach" or action.name == "gothrough" or
+           action.name == "goto"):
 
             self.stopping_for_artificial_delay = False
             if self.artificial_delays:
