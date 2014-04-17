@@ -13,6 +13,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from segbot_gui.srv import QuestionDialog, QuestionDialogRequest
 from segbot_simulation_apps.srv import DoorHandlerInterface
+from sound_play.msg import SoundRequest
 
 from .atom import Atom
 
@@ -60,8 +61,13 @@ class ActionExecutor(object):
         # segbot gui
         rospy.loginfo("Waiting for GUI to come up...")
         rospy.wait_for_service('question_dialog')
-        self.gui = rospy.ServiceProxy('question_dialog', QuestionDialog)
+        self._gui = rospy.ServiceProxy('question_dialog', QuestionDialog)
         rospy.loginfo("  Found GUI")
+        self.use_speech = rospy.get_param("~use_speech", False)
+
+        if self.use_speech:
+            rospy.loginfo("  Will Speak")
+            self.sound_publisher = rospy.Publisher('robotsound', SoundRequest)
 
         if not self.dry_run: 
 
@@ -75,6 +81,15 @@ class ActionExecutor(object):
                 self.update_doors = rospy.ServiceProxy('update_doors', 
                                                  DoorHandlerInterface)
         self.atom_class = atom_class
+
+    def gui(self, displayType, text, choices, timeout):
+        if self.use_speech:
+            req = SoundRequest()
+            req.sound = SoundRequest.SAY
+            req.command = SoundRequest.PLAY_ONCE
+            req.arg = text
+            self.sound_publisher.publish(req)
+        return self._gui(displayType, text, choices, timeout)
 
     def pose_handler(self, msg):
         self.position_frame_id = msg.header.frame_id
