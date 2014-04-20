@@ -37,39 +37,31 @@ catkin_package(
 )
 
 
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS}
+include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+
+add_library(${PROJECT_NAME} src/libbwi_planning/cost_learner.cpp)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+
+add_executable(cost_learner src/nodes/cost_learner.cpp)
+target_link_libraries(cost_learner ${PROJECT_NAME})
+
+# Install the plugin and the plugin description
+install (DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
+
+# Install the libary
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
-add_library(${PROJECT_NAME}
-  src/libbwi_planning/cost_learner.cpp
-)
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-  ${Boost_LIBRARIES}
-)
-
-add_executable(cost_learner
-  src/nodes/cost_learner.cpp
-)
-target_link_libraries(cost_learner
-  ${PROJECT_NAME}
-)
+# Install the node
+install(TARGETS cost_learner
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 # unit tests are enabled for roslaunch files
 if (CATKIN_ENABLE_TESTING)
   find_package(roslaunch REQUIRED)
   roslaunch_add_file_check(launch)
-endif (CATKIN_ENABLE_TESTING)
-
-# Install the plugin and the plugin description
-install (DIRECTORY include/bwi_planning/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
-
-install(TARGETS ${PROJECT_NAME} cost_learner
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+endif()

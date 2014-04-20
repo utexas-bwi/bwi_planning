@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 
 project(clasp)
 
-find_package(catkin COMPONENTS cmake_modules)
+find_package(catkin REQUIRED COMPONENTS cmake_modules)
 find_package(TBB REQUIRED)
 
 catkin_package(
@@ -19,7 +19,7 @@ foreach(lib clasp program_opts)
   include_directories(lib${lib})
   file(GLOB lib_src lib${lib}/src/*.cpp)
   add_library(${lib} ${lib_src})
-endforeach(lib)
+endforeach()
 
 ## binaries
 file(GLOB APP_SRC app/*.cpp)
@@ -42,4 +42,4 @@ foreach(lib clasp program_opts)
   install(DIRECTORY lib${lib}/${lib}/
     DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}/${lib}
   )
-endforeach(lib)
+endforeach()
