@@ -5,6 +5,7 @@ import rospy
 import signal
 import subprocess
 import threading
+import time
 
 from .atom import Atom
 
@@ -57,6 +58,8 @@ class ClingoWrapper(object):
 
     def get_plan(self, additional_files):
 
+        start_time = time.time()
+ 
         for n in range(self.clingo_steps):
             # Run clingo
             additional_files_str = " ".join(additional_files)
@@ -94,10 +97,15 @@ class ClingoWrapper(object):
                 rospy.logerr("  Error: " + str(e))
                 return False, 0, None, None
 
+            end_time = time.time()
+            rospy.loginfo("Planning took %ss." % str(end_time - start_time))
+
             return True, optimization, plan, states
         return False, 0, None, None
 
     def get_plan_costs(self, additional_files):
+
+        start_time = time.time()
 
         # Run clingo
         additional_files_str = " ".join(additional_files)
@@ -141,5 +149,9 @@ class ClingoWrapper(object):
             return False, 0, None, None
 
         out_file.close()
+
+        end_time = time.time()
+        rospy.loginfo("Planning took %ss." % str(end_time - start_time))
+
         return True, optimization, plan, states
 
