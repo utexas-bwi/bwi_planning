@@ -2,8 +2,8 @@
 Changelog for package bwi_planning_icaps14
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.0 (2014-04-23)
+------------------
 
 * Initial release to Hydro.
 * Spring Symposium code is now working.

@@ -2,10 +2,11 @@
 Changelog for package bwi_planning
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.0 (2014-04-23)
+------------------
 
 * Initial release to Hydro.
+* Moved clasp to a separate repository.
 * Fixed bugs while marking door, also added backwards compatible
   action goto to base action executor.
 * Add missing dependency on gringo.
