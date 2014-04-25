@@ -5,8 +5,21 @@
 #include <fstream>
 #include <ros/ros.h>
 #include <stdexcept>
+#include <yaml-cpp/yaml.h>
 
 #include <bwi_planning/cost_learner.h>
+
+#ifdef HAVE_NEW_YAMLCPP
+namespace YAML {
+  // The >> operator disappeared in yaml-cpp 0.5, so this function is
+  // added to provide support for code written under the yaml-cpp 0.3 API.
+  template<typename T>
+  void operator >> (const YAML::Node& node, T& i)
+  {
+    i = node.as<T>();
+  }
+}
+#endif
 
 namespace bwi_planning {
 
@@ -162,10 +175,14 @@ namespace bwi_planning {
     std::string in_file_name = values_file_ + 
       boost::lexical_cast<std::string>(episode);
     std::ifstream fin(in_file_name.c_str());
-    YAML::Parser parser(fin);
 
     YAML::Node doc;
+#ifdef HAVE_NEW_YAMLCPP
+    doc = YAML::Load(fin);
+#else
+    YAML::Parser parser(fin);
     parser.GetNextDocument(doc);
+#endif
 
     for (size_t i = 0; i < doc.size(); ++i) {
       std::string loc;
