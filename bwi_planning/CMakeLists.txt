@@ -49,6 +49,7 @@ add_library(${PROJECT_NAME} src/libbwi_planning/cost_learner.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${YAML_CPP_LIBRARIES})
 
 add_executable(${PROJECT_NAME}/cost_learner src/nodes/cost_learner.cpp)
+add_dependencies(${PROJECT_NAME}/cost_learner ${PROJECT_NAME}_generate_messages_cpp)
 set_target_properties(${PROJECT_NAME}/cost_learner PROPERTIES OUTPUT_NAME "cost_learner")
 target_link_libraries(${PROJECT_NAME}/cost_learner ${PROJECT_NAME})
 
