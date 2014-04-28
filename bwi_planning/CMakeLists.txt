@@ -9,6 +9,12 @@ find_package(catkin REQUIRED COMPONENTS
   std_srvs
 )
 find_package(Boost REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
+
+if(NOT ${YAML_CPP_VERSION} VERSION_LESS "0.5")
+add_definitions(-DHAVE_NEW_YAMLCPP)
+endif(NOT ${YAML_CPP_VERSION} VERSION_LESS "0.5")
 
 catkin_python_setup()
 
@@ -37,10 +43,10 @@ catkin_package(
 )
 
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME} src/libbwi_planning/cost_learner.cpp)
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${YAML_CPP_LIBRARIES})
 
 add_executable(${PROJECT_NAME}/cost_learner src/nodes/cost_learner.cpp)
 set_target_properties(${PROJECT_NAME}/cost_learner PROPERTIES OUTPUT_NAME "cost_learner")
