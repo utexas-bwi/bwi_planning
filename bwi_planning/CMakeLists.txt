@@ -14,7 +14,7 @@ pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
 
 if(NOT ${YAML_CPP_VERSION} VERSION_LESS "0.5")
 add_definitions(-DHAVE_NEW_YAMLCPP)
-endif(NOT ${YAML_CPP_VERSION} VERSION_LESS "0.5")
+endif()
 
 catkin_python_setup()
 
@@ -64,7 +64,7 @@ install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}/cost_learner
 )
 
 # unit tests are enabled for roslaunch files
-if (CATKIN_ENABLE_TESTING)
+if(CATKIN_ENABLE_TESTING)
   find_package(roslaunch REQUIRED)
   roslaunch_add_file_check(launch)
 endif()
