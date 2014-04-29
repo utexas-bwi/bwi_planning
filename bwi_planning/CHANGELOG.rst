@@ -2,6 +2,15 @@
 Changelog for package bwi_planning
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.1 (2014-04-29)
+------------------
+* added dependency on generated service file. closes `#10 <https://github.com/utexas-bwi/bwi_planning/issues/10>`_
+* modified cost_learner to have a unique build name. closes `#4 <https://github.com/utexas-bwi/bwi_planning/issues/4>`_
+* Added support for YAML-CPP 0.5+.
+  The new yaml-cpp API removes the "node >> outputvar;" operator, and it
+  has a new way of loading documents. 
+* Contributors: Piyush Khandelwal, Scott K Logan
+
 0.2.0 (2014-04-23)
 ------------------
 
