@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>bwi_planning_icaps14</name>
-  <version>0.2.0</version>
+  <version>0.2.1</version>
   <description>ASP based planning presented at ICAPS 2014</description>
 
   <maintainer email="piyushk@gmail.com">Piyush Khandelwal</maintainer>
